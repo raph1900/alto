@@ -1,0 +1,2280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Alto — Lead Management</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* ─── Reset & Base ─── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #F4F5F8;
+      --surface:      #FFFFFF;
+      --surface-2:    #F8F9FC;
+      --surface-3:    #EEF0F5;
+      --border:       #E2E6EF;
+      --border-light: #D0D6E4;
+      --primary:      #F5A623;
+      --primary-dark: #E09410;
+      --primary-glow: rgba(245,166,35,0.18);
+      --success:      #10B981;
+      --success-bg:   rgba(16,185,129,0.1);
+      --warning:      #F59E0B;
+      --warning-bg:   rgba(245,158,11,0.1);
+      --danger:       #EF4444;
+      --text-1:       #1A2332;
+      --text-2:       #4A5568;
+      --text-3:       #9BA8BF;
+      --radius:       10px;
+      --radius-lg:    14px;
+      --shadow:       0 2px 12px rgba(0,0,0,0.08);
+      --transition:   0.18s ease;
+    }
+
+    html, body { height: 100%; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text-1); font-size: 14px; line-height: 1.5; }
+
+    /* ─── Layout ─── */
+    .app { display: flex; height: 100vh; overflow: hidden; }
+
+    /* ─── Sidebar ─── */
+    .sidebar {
+      width: 228px; min-width: 228px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 10px;
+      padding: 22px 20px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-logo .logo-mark {
+      width: 34px; height: 34px; border-radius: 8px;
+      background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 16px; color: #fff; letter-spacing: -0.5px;
+      box-shadow: 0 2px 12px rgba(59,130,246,0.35);
+      flex-shrink: 0;
+    }
+    .sidebar-logo .logo-text { font-size: 18px; font-weight: 700; color: var(--text-1); letter-spacing: -0.3px; }
+
+    .sidebar-section { padding: 16px 12px 8px; }
+    .sidebar-section-label { font-size: 10px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.08em; padding: 0 8px; margin-bottom: 4px; }
+
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 10px; border-radius: 7px; cursor: pointer;
+      transition: background var(--transition), color var(--transition);
+      color: var(--text-2); font-size: 13.5px; font-weight: 500;
+      user-select: none; margin-bottom: 2px;
+    }
+    .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; stroke: currentColor; }
+    .nav-item:hover { background: var(--surface-2); color: var(--text-1); }
+    .nav-item.active { background: var(--primary-glow); color: var(--primary); }
+    .nav-item .badge {
+      margin-left: auto; background: var(--primary); color: #fff;
+      font-size: 10px; font-weight: 600; border-radius: 10px;
+      padding: 1px 6px; min-width: 18px; text-align: center;
+    }
+
+    .sidebar-footer {
+      margin-top: auto; padding: 16px 12px;
+      border-top: 1px solid var(--border);
+    }
+    .user-chip {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 10px; border-radius: 8px;
+      cursor: pointer; transition: background var(--transition);
+    }
+    .user-chip:hover { background: var(--surface-2); }
+    .avatar {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: linear-gradient(135deg, #8B5CF6, #3B82F6);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 600; color: #fff; flex-shrink: 0;
+    }
+    .user-name { font-size: 13px; font-weight: 500; color: var(--text-1); }
+    .user-role { font-size: 11px; color: var(--text-3); }
+
+    /* ─── Main Content ─── */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    .topbar {
+      display: flex; align-items: center; gap: 16px;
+      padding: 16px 28px; border-bottom: 1px solid var(--border);
+      background: var(--surface); min-height: 64px;
+    }
+    .topbar-title { font-size: 17px; font-weight: 650; color: var(--text-1); letter-spacing: -0.2px; flex: 1; }
+    .topbar-actions { display: flex; align-items: center; gap: 10px; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 7px 14px; border-radius: 8px; border: none; cursor: pointer;
+      font-size: 13px; font-weight: 500; font-family: inherit;
+      transition: all var(--transition); white-space: nowrap;
+    }
+    .btn svg { width: 14px; height: 14px; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-dark); box-shadow: 0 2px 12px rgba(59,130,246,0.3); }
+    .btn-ghost { background: transparent; color: var(--text-2); border: 1px solid var(--border); }
+    .btn-ghost:hover { background: var(--surface-2); color: var(--text-1); }
+    .btn-ghost.active { background: var(--primary-glow); color: var(--primary); border-color: rgba(59,130,246,0.3); }
+    .btn-icon { padding: 7px; border-radius: 7px; }
+    .btn-danger { background: rgba(239,68,68,0.1); color: var(--danger); border: 1px solid rgba(239,68,68,0.2); }
+    .btn-danger:hover { background: rgba(239,68,68,0.2); }
+
+    .view-toggle { display: flex; background: var(--surface-2); border-radius: 8px; padding: 3px; border: 1px solid var(--border); }
+    .view-btn {
+      padding: 5px 8px; border-radius: 5px; cursor: pointer; border: none;
+      background: transparent; color: var(--text-3); transition: all var(--transition);
+      display: flex; align-items: center;
+    }
+    .view-btn svg { width: 15px; height: 15px; }
+    .view-btn:hover { color: var(--text-1); }
+    .view-btn.active { background: var(--surface); color: var(--primary); box-shadow: var(--shadow); }
+
+    .content { flex: 1; overflow-y: auto; padding: 24px 28px; }
+
+    /* ─── Scrollbar ─── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+    /* ─── Pages ─── */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ─── Stats Row ─── */
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 18px 20px;
+      transition: border-color var(--transition);
+    }
+    .stat-card:hover { border-color: var(--border-light); }
+    .stat-label { font-size: 12px; color: var(--text-3); font-weight: 500; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .stat-value { font-size: 26px; font-weight: 700; color: var(--text-1); letter-spacing: -0.5px; }
+    .stat-sub { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+    .stat-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 20px; margin-top: 6px; }
+    .stat-badge.up { color: var(--success); background: var(--success-bg); }
+    .stat-badge.neutral { color: var(--warning); background: var(--warning-bg); }
+
+    /* ─── Filter Bar ─── */
+    .filter-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+    .filter-tabs { display: flex; gap: 4px; }
+    .filter-tab {
+      padding: 6px 14px; border-radius: 7px; font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: all var(--transition); border: 1px solid transparent;
+      color: var(--text-2);
+    }
+    .filter-tab:hover { color: var(--text-1); background: var(--surface-2); }
+    .filter-tab.active { color: var(--primary); background: var(--primary-glow); border-color: rgba(59,130,246,0.25); }
+    .search-input-wrap { position: relative; flex: 1; max-width: 280px; }
+    .search-input-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; stroke: var(--text-3); pointer-events: none; }
+    .search-input {
+      width: 100%; padding: 7px 12px 7px 32px; border-radius: 8px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      color: var(--text-1); font-size: 13px; font-family: inherit; outline: none;
+      transition: border-color var(--transition);
+    }
+    .search-input:focus { border-color: var(--primary); }
+    .search-input::placeholder { color: var(--text-3); }
+
+    /* ─── Table ─── */
+    .leads-table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+    .leads-table { width: 100%; border-collapse: collapse; }
+    .leads-table th {
+      text-align: left; padding: 11px 16px; font-size: 11px; font-weight: 600;
+      color: var(--text-3); text-transform: uppercase; letter-spacing: 0.07em;
+      background: var(--surface-2); border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    .leads-table td { padding: 13px 16px; border-bottom: 1px solid var(--border); font-size: 13.5px; color: var(--text-1); vertical-align: middle; }
+    .leads-table tr:last-child td { border-bottom: none; }
+    .leads-table tr:hover td { background: rgba(255,255,255,0.025); cursor: pointer; }
+
+    .job-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 500; white-space: nowrap;
+    }
+    .job-badge.garage  { background: rgba(59,130,246,0.12); color: #60A5FA; }
+    .job-badge.hvac    { background: rgba(16,185,129,0.12); color: #34D399; }
+    .job-badge.plumbing{ background: rgba(245,158,11,0.12);  color: #FCD34D; }
+    .job-badge.electric{ background: rgba(139,92,246,0.12); color: #A78BFA; }
+    .job-badge.other   { background: rgba(100,116,139,0.12); color: #94A3B8; }
+
+    .id-chip { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; color: var(--text-3); background: var(--surface-3); padding: 2px 7px; border-radius: 5px; }
+
+    .lead-name-cell { display: flex; align-items: center; gap: 10px; }
+    .lead-avatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #fff; flex-shrink: 0; }
+    .lead-addr { font-size: 12px; color: var(--text-3); margin-top: 2px; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .action-btns { display: flex; align-items: center; gap: 6px; opacity: 0; transition: opacity var(--transition); }
+    tr:hover .action-btns { opacity: 1; }
+    .icon-btn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--text-3); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all var(--transition); }
+    .icon-btn svg { width: 13px; height: 13px; }
+    .icon-btn:hover { background: var(--surface-3); color: var(--text-1); }
+    .icon-btn.del:hover { background: rgba(239,68,68,0.1); color: var(--danger); border-color: rgba(239,68,68,0.2); }
+
+    /* ─── List View ─── */
+    .leads-list { display: flex; flex-direction: column; gap: 10px; }
+    .lead-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 16px 18px;
+      display: flex; align-items: center; gap: 16px;
+      transition: border-color var(--transition), box-shadow var(--transition);
+      cursor: pointer;
+    }
+    .lead-card:hover { border-color: var(--border-light); box-shadow: 0 2px 16px rgba(0,0,0,0.2); }
+    .lead-card-info { flex: 1; min-width: 0; }
+    .lead-card-name { font-size: 14px; font-weight: 600; color: var(--text-1); }
+    .lead-card-meta { display: flex; align-items: center; gap: 12px; margin-top: 5px; flex-wrap: wrap; }
+    .lead-card-meta span { font-size: 12px; color: var(--text-3); display: flex; align-items: center; gap: 4px; }
+    .lead-card-meta svg { width: 12px; height: 12px; }
+    .lead-card-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+
+    /* ─── Empty State ─── */
+    .empty-state { text-align: center; padding: 60px 20px; }
+    .empty-icon { width: 52px; height: 52px; margin: 0 auto 16px; background: var(--surface-2); border-radius: 14px; display: flex; align-items: center; justify-content: center; }
+    .empty-icon svg { width: 24px; height: 24px; stroke: var(--text-3); }
+    .empty-title { font-size: 15px; font-weight: 600; color: var(--text-1); margin-bottom: 6px; }
+    .empty-sub { font-size: 13px; color: var(--text-3); margin-bottom: 20px; }
+
+    /* ─── Add Lead Form ─── */
+    .new-lead-title { font-size:18px; font-weight:700; color:var(--text-1); letter-spacing:-0.3px; margin-bottom:20px; }
+    .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+    .form-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px 24px; }
+    .form-card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+    .form-card-title { font-size:14px; font-weight:650; color:var(--text-1); }
+    .verified-badge { display:inline-flex; align-items:center; gap:4px; font-size:12px; font-weight:600; color:var(--success); }
+    .verified-badge svg { width:13px; height:13px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    .form-row.full { grid-template-columns: 1fr; }
+    .form-row.addr-row { grid-template-columns: 3fr 1fr; }
+    .form-row:last-child { margin-bottom: 0; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-label { font-size: 11px; font-weight: 600; color: var(--text-3); letter-spacing: 0.04em; text-transform: uppercase; }
+    .form-label span { color: var(--danger); margin-left: 2px; }
+    .form-input, .form-select, .form-textarea {
+      padding: 9px 11px; border-radius: 7px; border: 1px solid var(--border);
+      background: var(--surface-2); color: var(--text-1); font-size: 13px;
+      font-family: inherit; outline: none; transition: border-color var(--transition), box-shadow var(--transition);
+      width: 100%;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); }
+    .form-input::placeholder, .form-textarea::placeholder { color: var(--text-3); }
+    .form-input[readonly] { color: var(--text-3); cursor: default; }
+    .form-select { appearance: none; cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; padding-right:28px; }
+    .form-textarea { resize: vertical; min-height: 82px; line-height: 1.5; }
+    /* Custom select dropdown */
+    .csel { position: relative; width: 100%; }
+    .csel-trigger { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 6px;
+      padding: 9px 11px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface-2);
+      color: var(--text-1); font-size: 13px; font-family: inherit; cursor: pointer; text-align: left;
+      transition: border-color var(--transition), box-shadow var(--transition); }
+    .csel-trigger:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); outline: none; }
+    .csel.open .csel-trigger { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); }
+    .csel-val { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .csel-val.placeholder { color: var(--text-3); }
+    .csel-chev { flex-shrink: 0; width: 14px; height: 14px; stroke: var(--text-3); transition: transform 0.18s; }
+    .csel.open .csel-chev { transform: rotate(180deg); }
+    .csel-list { display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.13); z-index: 500; overflow: hidden; max-height: 240px; overflow-y: auto; }
+    .csel.open .csel-list { display: block; }
+    .csel-opt { display: block; width: 100%; padding: 11px 14px; font-size: 13px; color: var(--text-1);
+      background: none; border: none; text-align: left; cursor: pointer; font-family: inherit; }
+    .csel-opt:hover { background: var(--surface-3); }
+    .csel-opt.selected { color: var(--primary-dark); font-weight: 600; background: var(--primary-glow); }
+    .csel-opt:not(:last-child) { border-bottom: 1px solid var(--border-light); }
+    option { background: #FFFFFF; color: var(--text-1); }
+
+    .address-wrap { position: relative; }
+    /* ── Custom fallback dropdown ── */
+    .pac-container-custom {
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      background: var(--surface-2); border: 1px solid var(--border-light);
+      border-radius: 8px; z-index: 1000; overflow: hidden;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+      display: none;
+    }
+    .pac-item {
+      padding: 10px 14px; cursor: pointer; font-size: 13px; color: var(--text-1);
+      border-bottom: 1px solid var(--border); transition: background var(--transition);
+      display: flex; align-items: flex-start; gap: 10px;
+    }
+    .pac-item:last-child { border-bottom: none; }
+    .pac-item:hover, .pac-item.highlighted { background: var(--surface-3); }
+    .pac-item svg { width: 13px; height: 13px; stroke: var(--text-3); margin-top: 2px; flex-shrink: 0; }
+    .pac-item-main { font-weight: 500; }
+    .pac-item-secondary { font-size: 11.5px; color: var(--text-3); margin-top: 1px; }
+    /* ── Google Maps native dropdown — dark theme override ── */
+    .pac-container {
+      background: var(--surface-2) !important;
+      border: 1px solid var(--border-light) !important;
+      border-radius: 8px !important;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.5) !important;
+      font-family: 'Inter', sans-serif !important;
+      margin-top: 4px !important;
+      overflow: hidden !important;
+    }
+    .pac-container::after { display: none !important; }
+    .pac-container .pac-item {
+      padding: 10px 14px !important; border-top: 1px solid var(--border) !important;
+      color: var(--text-1) !important; font-size: 13px !important; line-height: 1.5 !important;
+      display: block !important;
+    }
+    .pac-container .pac-item:first-child { border-top: none !important; }
+    .pac-container .pac-item:hover,
+    .pac-container .pac-item-selected { background: var(--surface-3) !important; }
+    .pac-icon, .pac-icon-marker { display: none !important; }
+    .pac-item-query { color: var(--text-1) !important; font-size: 13px !important; }
+    .pac-matched { font-weight: 600 !important; color: var(--primary) !important; }
+    .pac-secondary-text { color: var(--text-3) !important; font-size: 12px !important; }
+
+    .form-footer { display: flex; gap: 10px; margin-top: 24px; }
+
+    /* ─── Toast ─── */
+    .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+    .toast {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--surface-2); border: 1px solid var(--border-light);
+      border-radius: 10px; padding: 12px 16px; min-width: 240px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      animation: slideIn 0.2s ease; color: var(--text-1); font-size: 13px; font-weight: 500;
+    }
+    .toast.success { border-left: 3px solid var(--success); }
+    .toast.error   { border-left: 3px solid var(--danger); }
+    .toast svg { width: 16px; height: 16px; flex-shrink: 0; }
+    .toast.success svg { stroke: var(--success); }
+    .toast.error   svg { stroke: var(--danger); }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+
+    /* ─── Modal ─── */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 500; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal { background: var(--surface); border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 28px; max-width: 420px; width: 90%; box-shadow: 0 24px 80px rgba(0,0,0,0.5); transform: scale(0.96); transition: transform 0.2s; }
+    .modal-overlay.open .modal { transform: scale(1); }
+    .modal-title { font-size: 16px; font-weight: 650; margin-bottom: 8px; }
+    .modal-body { font-size: 13.5px; color: var(--text-2); margin-bottom: 24px; line-height: 1.6; }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; }
+
+    /* ─── Date chip ─── */
+    .date-chip { font-size: 11.5px; color: var(--text-3); }
+
+    /* ─── Timeline Schedule ─── */
+    .timeline { display: flex; flex-direction: column; gap: 0; }
+    .timeline-group { display: flex; gap: 16px; padding: 0 0 20px 0; }
+    .timeline-date-col { display: flex; flex-direction: column; align-items: center; min-width: 44px; padding-top: 16px; }
+    .timeline-day { font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; }
+    .timeline-num { font-size: 22px; font-weight: 700; color: var(--text-1); line-height: 1.1; }
+    .timeline-cards-col { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+    .timeline-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-left: 3px solid var(--primary);
+      border-radius: var(--radius-lg); padding: 14px 16px;
+      transition: box-shadow var(--transition), border-color var(--transition);
+      cursor: pointer;
+    }
+    .timeline-card:hover { box-shadow: 0 2px 16px rgba(0,0,0,0.25); border-color: var(--border-light); }
+    .timeline-card-top { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+    .timeline-job-id { font-size: 11px; font-weight: 600; color: var(--text-3); font-family: 'SF Mono','Fira Code',monospace; }
+    .timeline-sep { width: 1px; height: 12px; background: var(--border); }
+    .timeline-status { font-size: 10.5px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.07em; }
+    .timeline-more { margin-left: auto; background: none; border: none; color: var(--text-3); cursor: pointer; font-size: 16px; padding: 0 4px; line-height: 1; }
+    .timeline-more:hover { color: var(--text-1); }
+    .timeline-time { font-size: 14px; font-weight: 700; color: var(--text-1); margin-bottom: 4px; }
+    .timeline-time span { font-weight: 400; color: var(--text-2); font-size: 13px; }
+    .timeline-client { font-size: 13px; font-weight: 500; color: var(--text-1); margin-bottom: 5px; }
+    .timeline-addr { display: flex; align-items: flex-start; gap: 5px; font-size: 12px; color: var(--text-3); margin-bottom: 10px; }
+    .timeline-addr svg { width: 12px; height: 12px; flex-shrink: 0; margin-top: 1px; }
+    .timeline-footer { display: flex; align-items: center; gap: 8px; }
+    .tl-card-garage  { border-left-color: #3B82F6; }
+    .tl-card-hvac    { border-left-color: #10B981; }
+    .tl-card-plumbing{ border-left-color: #F59E0B; }
+    .tl-card-electric{ border-left-color: #8B5CF6; }
+    .tl-card-other   { border-left-color: #64748B; }
+    .timeline-empty { text-align:center; padding: 48px 20px; }
+
+    /* ─── Schedule form fields ─── */
+    .schedule-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 10px; margin-bottom: 10px; }
+    .schedule-sep { font-size: 12px; color: var(--text-3); padding-bottom: 10px; text-align: center; }
+    .time-picker { display: flex; align-items: center; gap: 5px; }
+    .time-picker .form-select { width: auto; flex: 1; min-width: 0; }
+    .time-picker #f-start-ampm, .time-picker #f-end-ampm { flex: 0 0 62px; }
+    .time-colon { font-size: 15px; font-weight: 600; color: var(--text-2); flex-shrink: 0; }
+
+    /* ─── Phone Tracker ─── */
+    .phone-tracker-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .phone-add-row {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 18px 20px;
+      display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto;
+      gap: 12px; align-items: end; margin-bottom: 20px;
+    }
+    .phone-table-wrap {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); overflow: hidden;
+    }
+    .phone-table { width: 100%; border-collapse: collapse; }
+    .phone-table th {
+      text-align: left; padding: 11px 16px; font-size: 11px; font-weight: 600;
+      color: var(--text-3); text-transform: uppercase; letter-spacing: 0.07em;
+      background: var(--surface-2); border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    .phone-table td {
+      padding: 12px 16px; border-bottom: 1px solid var(--border);
+      font-size: 13.5px; color: var(--text-1); vertical-align: middle;
+    }
+    .phone-table tr:last-child td { border-bottom: none; }
+    .phone-table tr:hover td { background: rgba(255,255,255,0.025); }
+    /* On desktop the first "card" td (mobile-only summary) should be hidden */
+    .phone-table td.mobile-card-td { display: none; }
+    .phone-number { font-family: 'SF Mono','Fira Code',monospace; font-size: 13px; font-weight: 500; }
+    .contact-date { display: flex; align-items: center; gap: 6px; }
+    .contact-date svg { width: 13px; height: 13px; stroke: var(--text-3); flex-shrink: 0; }
+    .contact-date.overdue { color: var(--danger); }
+    .contact-date.overdue svg { stroke: var(--danger); }
+    .contact-date.soon { color: var(--warning); }
+    .contact-date.soon svg { stroke: var(--warning); }
+    .notes-text { font-size: 12px; color: var(--text-3); max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .notes-editable {
+      font-size: 12.5px; color: var(--text-1); background: transparent;
+      border: 1px solid transparent; border-radius: 5px; padding: 4px 7px;
+      min-width: 180px; white-space: pre-wrap; word-break: break-word;
+      font-family: inherit; outline: none; width: 100%; min-width: 200px;
+      white-space: pre-wrap; word-break: break-word; resize: none;
+      overflow: hidden; line-height: 1.5;
+      transition: border-color var(--transition), background var(--transition);
+      field-sizing: content;
+    }
+    .notes-editable:hover { border-color: var(--border); background: var(--surface-2); }
+    .notes-editable:focus { border-color: var(--primary); background: var(--surface-2); box-shadow: 0 0 0 3px var(--primary-glow); }
+    .date-editable {
+      font-size: 12.5px; color: var(--text-1); background: transparent;
+      border: 1px solid transparent; border-radius: 5px; padding: 4px 7px;
+      font-family: inherit; outline: none;
+      transition: border-color var(--transition), background var(--transition);
+      color-scheme: dark;
+    }
+    .date-editable:hover { border-color: var(--border); background: var(--surface-2); }
+    .date-editable:focus { border-color: var(--primary); background: var(--surface-2); box-shadow: 0 0 0 3px var(--primary-glow); }
+    .attempt-checks { display: flex; align-items: center; gap: 10px; }
+    .attempt-check { display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; }
+    .attempt-check input[type=checkbox] { display: none; }
+    .attempt-dot {
+      width: 20px; height: 20px; border-radius: 5px;
+      border: 1.5px solid var(--border); background: var(--surface-2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 700; color: transparent;
+      transition: all var(--transition);
+    }
+    .attempt-check input:checked + .attempt-dot { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .attempt-label { font-size: 10px; color: var(--text-3); font-weight: 600; }
+    .icon-btn.archive { color: var(--danger); border-color: rgba(239,68,68,0.25); background: rgba(239,68,68,0.07); }
+    .icon-btn.archive:hover { background: rgba(239,68,68,0.18); border-color: rgba(239,68,68,0.4); }
+    .icon-btn.restore { color: var(--success); border-color: rgba(16,185,129,0.25); background: rgba(16,185,129,0.07); }
+    .icon-btn.restore:hover { background: rgba(16,185,129,0.18); border-color: rgba(16,185,129,0.4); }
+    .archive-collapsed { display: none; }
+
+    /* ─── Responsive ─── */
+    /* ─── Light theme overrides ─── */
+    .sidebar { background: #FFFFFF; border-right: 1px solid var(--border); }
+    .sidebar-logo .logo-mark { background: linear-gradient(135deg,#F5A623 0%,#E09410 100%); box-shadow: 0 2px 12px rgba(245,166,35,0.35); }
+    .topbar { background: #FFFFFF; border-bottom: 1px solid var(--border); box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .stat-card, .form-card, .surface-card { box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .nav-item { color: #6B7A99; }
+    .nav-item svg { stroke: #6B7A99; }
+    .nav-item:hover { background: var(--surface-2); color: #1A2332; }
+    .nav-item.active { background: rgba(245,166,35,0.1); color: #E09410; }
+    .nav-item.active svg { stroke: #E09410; }
+    .nav-item .badge { background: var(--primary); color: #fff; }
+    .bottom-nav { background: #FFFFFF; border-top-color: var(--border); }
+    .bottom-nav-item { color: #9BA8BF; }
+    .bottom-nav-item svg { stroke: #9BA8BF; }
+    .bottom-nav-item.active { color: var(--primary); }
+    .bottom-nav-item.active svg { stroke: var(--primary); }
+    table th { background: var(--surface-2); color: #6B7A99; }
+    /* Attempt dots — visible unchecked on light bg */
+    .attempt-dot { border-color: #C8D0E0; background: #F0F2F7; }
+    .attempt-check input:checked + .attempt-dot { background: var(--primary); border-color: var(--primary); color: #fff; }
+    /* Phone number visible */
+    .phone-number { color: #1A2332 !important; }
+    /* Icon buttons visible on light */
+    .icon-btn { border-color: #D0D6E4; color: #6B7A99; background: #F8F9FC; }
+    .icon-btn:hover { background: #EEF0F5; color: #1A2332; }
+    .icon-btn.del { border-color: #D0D6E4; }
+    .icon-btn.del:hover { background: rgba(239,68,68,0.08); color: var(--danger); border-color: rgba(239,68,68,0.3); }
+    .icon-btn.restore { color: #10B981; border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.06); }
+    .icon-btn.restore:hover { background: rgba(16,185,129,0.14); }
+    /* Table rows */
+    .phone-table tr { background: #FFFFFF; }
+    .phone-table tr:hover td { background: #F8F9FC; }
+    .archive-table tr { background: #F8F9FC !important; border-color: #E2E6EF !important; }
+    /* Add form */
+    .phone-add-row { background: #FFFFFF; }
+    /* Date/notes editable */
+    .date-editable { color: #1A2332; color-scheme: light; }
+    .notes-editable { color: #1A2332; }
+    /* All date inputs — force light calendar icon */
+    input[type="date"] { color-scheme: light; }
+    input[type="date"]::-webkit-calendar-picker-indicator { filter: none; opacity: 0.6; cursor: pointer; }
+    /* Chips */
+    .id-chip { background: #EEF0F5; color: #6B7A99; }
+    .date-chip { color: #6B7A99; }
+    /* View toggle */
+    .view-btn { border-color: #D0D6E4; background: #F8F9FC; color: #6B7A99; }
+    .view-btn svg { stroke: #6B7A99; }
+    .view-btn.active { background: #FFFFFF; color: #1A2332; border-color: #C8D0E0; }
+    /* Search input */
+    .search-input { background: #FFFFFF; border-color: #D0D6E4; color: #1A2332; }
+    /* Topbar title */
+    .topbar-title { color: #1A2332; }
+    /* Misc */
+    .pac-container { background: #FFFFFF; border-color: var(--border); }
+    .toast.success { background: #1A2332; }
+    .toast.error   { background: #EF4444; }
+
+    /* ─── Mobile ─── */
+    @media (max-width: 768px) {
+      .sidebar { width: 64px; min-width: 64px; }
+      .sidebar-logo .logo-text, .nav-item span, .sidebar-section-label, .user-name, .user-role { display: none; }
+      .nav-item { justify-content: center; padding: 10px; }
+      .nav-item .badge { display: none; }
+      .stats-row { grid-template-columns: 1fr 1fr; }
+      .form-row { grid-template-columns: 1fr; }
+      .topbar { padding: 14px 16px; }
+      .content { padding: 16px; }
+      .form-card { padding: 20px; }
+    }
+
+    @media (max-width: 540px) {
+      /* Hide sidebar entirely, show bottom nav */
+      .sidebar { display: none !important; }
+      .bottom-nav { display: flex !important; }
+      .main { padding-bottom: 68px; }
+      .topbar { padding: 12px 16px; }
+      .topbar h1 { font-size: 17px; }
+      .topbar .btn { font-size: 12px; padding: 7px 13px; }
+      .content { padding: 14px 12px; }
+
+      /* Stats */
+      .stats-row { grid-template-columns: 1fr 1fr; gap: 10px; }
+      .stat-card { padding: 14px; }
+      .stat-value { font-size: 26px; }
+
+      /* Forms — mobile */
+      .form-grid { grid-template-columns: 1fr !important; }
+      .form-grid > .form-card { min-width: 0; }
+      .form-card { padding: 16px; }
+      .form-row,
+      .form-row.addr-row,
+      .form-row[style] { grid-template-columns: 1fr !important; }
+      .schedule-row { grid-template-columns: 1fr !important; gap: 6px; }
+      .schedule-sep { display: none; }
+      .form-footer { flex-direction: column; }
+      .form-footer .btn { width: 100%; justify-content: center; }
+
+      /* Phone tracker add row → stacked */
+      .phone-add-row:not(.pt-hidden) { display: flex !important; flex-direction: column !important; gap: 10px; }
+      .phone-add-row.pt-hidden { display: none !important; }
+      .phone-add-row .form-group { width: 100% !important; flex: none !important; }
+      .phone-add-row .btn { width: 100%; justify-content: center; align-self: stretch; }
+      .phone-add-row input, .phone-add-row select { width: 100% !important; max-width: 100%; box-sizing: border-box; }
+
+      /* Show mobile card td, hide desktop cells */
+      .phone-table td.mobile-card-td { display: block !important; }
+      /* Phone table → compact collapsible cards */
+      .phone-table-wrap { border-radius: var(--radius); overflow: visible; background: transparent; border: none; }
+      .phone-table thead { display: none; }
+      .phone-table, .phone-table tbody, .phone-table tr { display: block; width: 100%; }
+      .phone-table tr {
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: var(--radius); margin-bottom: 8px; padding: 12px 14px;
+        display: block;
+      }
+      .phone-table tr:hover { background: var(--surface); }
+      .phone-table td { display: block; padding: 0; border: none; }
+      .phone-table .desktop-cell { display: none !important; }
+      .phone-table .card-top-row {
+        display: flex; align-items: center; gap: 8px; width: 100%;
+      }
+      .phone-table .card-top-row .phone-number { font-size: 15px; }
+      /* Notes textarea full width */
+      .notes-editable { min-width: 0 !important; width: 100%; }
+      /* Archive section — own card style, not affected by follow-ups card CSS */
+      #phone-archive-section .phone-table-wrap { border: none; background: transparent; }
+      .archive-table thead { display: none !important; }
+      .archive-table, .archive-table tbody, .archive-table tr { display: block !important; width: 100%; }
+      .archive-table tr {
+        background: var(--surface) !important; border: 1px solid var(--border) !important;
+        border-radius: var(--radius) !important; margin-bottom: 8px !important;
+        padding: 12px 14px !important; opacity: 0.75;
+      }
+      .archive-table td { display: none !important; padding: 0 !important; border: none !important; }
+      .archive-table td.mobile-card-td { display: block !important; }
+      /* Attempt checks wrap */
+      .attempt-checks { flex-wrap: wrap; }
+    }
+
+    /* Bottom navigation bar */
+    .bottom-nav {
+      display: none;
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+      background: var(--surface); border-top: 1px solid var(--border);
+      height: 64px; padding: 0 4px;
+      align-items: stretch; justify-content: space-around;
+    }
+    .bottom-nav-item {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 3px; flex: 1; cursor: pointer; border: none; background: none;
+      color: var(--text-3); font-size: 10px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.04em; padding: 6px 4px;
+      transition: color var(--transition); position: relative;
+    }
+    .bottom-nav-item svg { width: 20px; height: 20px; stroke: currentColor; }
+    .bottom-nav-item.active { color: var(--primary); }
+    .bottom-nav-item .bnav-badge {
+      position: absolute; top: 6px; right: calc(50% - 16px);
+      background: var(--danger); color: #fff; font-size: 9px; font-weight: 700;
+      border-radius: 99px; min-width: 15px; height: 15px; padding: 0 4px;
+      display: flex; align-items: center; justify-content: center; line-height: 1;
+    }
+  </style>
+</head>
+<body>
+
+<div id="auth-screen" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);padding:20px;">
+  <div style="background:var(--surface);border-radius:16px;padding:36px 32px;width:100%;max-width:380px;box-shadow:0 8px 32px rgba(0,0,0,0.10);">
+    <div style="text-align:center;margin-bottom:28px;">
+      <div style="width:48px;height:48px;background:var(--primary);border-radius:12px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2" style="width:26px;height:26px;stroke:#fff;"><path stroke-linecap="round" d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </div>
+      <h1 style="font-size:22px;font-weight:700;color:var(--text-1);">Alto CRM</h1>
+      <p style="font-size:13px;color:var(--text-3);margin-top:4px;">Sign in to your account</p>
+    </div>
+    <div id="auth-error" style="display:none;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#e53e3e;font-size:13px;padding:10px 14px;border-radius:8px;margin-bottom:16px;"></div>
+    <form id="auth-form" onsubmit="signIn(event)">
+      <div style="margin-bottom:14px;">
+        <label style="display:block;font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">Email</label>
+        <input id="auth-email" type="email" required placeholder="you@example.com" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text-1);font-size:14px;font-family:inherit;outline:none;" />
+      </div>
+      <div style="margin-bottom:20px;">
+        <label style="display:block;font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">Password</label>
+        <input id="auth-password" type="password" required placeholder="••••••••" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text-1);font-size:14px;font-family:inherit;outline:none;" />
+      </div>
+      <button type="submit" id="auth-submit" style="width:100%;padding:11px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">Sign In</button>
+    </form>
+  </div>
+</div>
+<div class="app" id="app">
+  <!-- ─── Sidebar ─── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">A</div>
+      <div class="logo-text">Alto</div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Menu</div>
+
+      <div class="nav-item active" data-page="dashboard" onclick="navigate(this, 'dashboard')">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        <span>Dashboard</span>
+      </div>
+
+      <div class="nav-item" data-page="all-leads" onclick="navigate(this, 'all-leads')">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path stroke-linecap="round" d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>All Leads</span>
+        <span class="badge" id="badge-all">0</span>
+      </div>
+
+      <div class="nav-item" data-page="add-lead" onclick="navigate(this, 'add-lead')">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 8v8M8 12h8"/></svg>
+        <span>Add Lead</span>
+      </div>
+
+      <div class="nav-item" data-page="phone-tracker" onclick="navigate(this, 'phone-tracker')">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 21.73 16z"/></svg>
+        <span>Phone Tracker</span>
+        <span class="badge" id="badge-phone">0</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Views</div>
+
+      <div class="nav-item" data-page="today" onclick="navigate(this, 'today')">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path stroke-linecap="round" d="M16 2v4M8 2v4M3 10h18"/></svg>
+        <span>Today</span>
+        <span class="badge" id="badge-today">0</span>
+      </div>
+
+      <div class="nav-item" data-page="week" onclick="navigate(this, 'week')">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+        <span>This Week</span>
+        <span class="badge" id="badge-week">0</span>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <div class="avatar">JD</div>
+        <div>
+          <div class="user-name">John Doe</div>
+          <div class="user-role">Admin</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ─── Main ─── -->
+  <div class="main">
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="topbar-title" id="page-title">Dashboard</div>
+      <div class="topbar-actions" id="topbar-actions">
+        <button class="btn btn-primary" onclick="navigate(document.querySelector('[data-page=add-lead]'), 'add-lead')">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
+          Add Lead
+        </button>
+      </div>
+      <button id="logout-btn" onclick="signOut()" style="display:none;margin-left:8px;padding:7px 13px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text-2);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;">Sign Out</button>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+
+      <!-- ── Dashboard Page ── -->
+      <div class="page active" id="page-dashboard">
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-label">Total Leads</div>
+            <div class="stat-value" id="stat-total">0</div>
+            <div class="stat-badge neutral" id="stat-total-sub">All time</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Today</div>
+            <div class="stat-value" id="stat-today">0</div>
+            <div class="stat-badge up" id="stat-today-sub">↑ New today</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">This Week</div>
+            <div class="stat-value" id="stat-week">0</div>
+            <div class="stat-badge up">↑ This week</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Job Types</div>
+            <div class="stat-value" id="stat-types">0</div>
+            <div class="stat-sub">Distinct categories</div>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+          <div style="font-size:15px; font-weight:650; color:var(--text-1);">Recent Leads</div>
+          <button class="btn btn-ghost" style="font-size:12px;" onclick="navigate(document.querySelector('[data-page=all-leads]'), 'all-leads')">View all →</button>
+        </div>
+        <div id="dashboard-recent"></div>
+      </div>
+
+      <!-- ── All Leads Page ── -->
+      <div class="page" id="page-all-leads">
+        <div class="filter-bar">
+          <div class="search-input-wrap">
+            <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="m21 21-4.35-4.35"/></svg>
+            <input class="search-input" id="search-all" placeholder="Search leads…" oninput="renderAll()" />
+          </div>
+          <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
+            <div class="view-toggle">
+              <button class="view-btn active" id="vbtn-table" onclick="setView('table')">
+                <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8"><path d="M3 10h18M3 6h18M3 14h18M3 18h18"/></svg>
+              </button>
+              <button class="view-btn" id="vbtn-list" onclick="setView('list')">
+                <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8"><rect x="3" y="3" width="7" height="5" rx="1"/><rect x="3" y="10" width="7" height="5" rx="1"/><rect x="3" y="17" width="7" height="5" rx="1"/><path d="M14 5.5h7M14 12.5h7M14 19.5h7"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div id="leads-container"></div>
+      </div>
+
+      <!-- ── Add Lead Page ── -->
+      <div class="page" id="page-add-lead">
+        <div class="new-lead-title">New Lead</div>
+        <form id="lead-form" onsubmit="submitLead(event)">
+          <div class="form-grid">
+
+            <!-- Client Details -->
+            <div class="form-card">
+              <div class="form-card-header">
+                <div class="form-card-title">Client Details</div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">First Name <span>*</span></label>
+                  <input class="form-input" id="f-first" placeholder="Client name" required />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Last Name <span>*</span></label>
+                  <input class="form-input" id="f-last" placeholder="Last name" required />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Phone</label>
+                  <input class="form-input" id="f-phone" type="tel" placeholder="(555) 000-0000" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Email</label>
+                  <input class="form-input" id="f-email" type="email" placeholder="client@email.com" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Service Location -->
+            <div class="form-card">
+              <div class="form-card-header">
+                <div class="form-card-title">Service Location</div>
+                <div class="verified-badge" id="verified-badge" style="display:none">
+                  <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" d="M5 12l5 5L20 7"/></svg>
+                  Verified
+                </div>
+              </div>
+              <div class="form-row addr-row">
+                <div class="form-group">
+                  <label class="form-label">Address <span>*</span></label>
+                  <div class="address-wrap">
+                    <input class="form-input" id="f-address" placeholder="Start typing a US address…" autocomplete="off" oninput="onAddressInput()" onkeydown="onAddressKey(event)" required />
+                    <div class="pac-container-custom" id="pac-dropdown"></div>
+                  </div>
+                  <div id="f-address-error" style="font-size:11px; color:var(--danger); margin-top:3px; display:none;">Please select an address from the suggestions.</div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Unit</label>
+                  <input class="form-input" id="f-unit" placeholder="Unit #" />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">City</label>
+                  <input class="form-input" id="f-city" placeholder="City" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">State</label>
+                  <input class="form-input" id="f-state" placeholder="State" />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Zip</label>
+                  <input class="form-input" id="f-zip" placeholder="ZIP" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Country</label>
+                  <input class="form-input" id="f-country" value="United States" readonly />
+                </div>
+              </div>
+            </div>
+
+            <!-- Job Details -->
+            <div class="form-card" style="grid-column:1 / -1">
+              <div class="form-card-header">
+                <div class="form-card-title">Job Details</div>
+              </div>
+              <div class="form-row full" style="margin-bottom:12px">
+                <div class="form-group">
+                  <label class="form-label">Job Name</label>
+                  <input class="form-input" id="f-jobname" placeholder="e.g. Garage door repair" />
+                </div>
+              </div>
+              <div class="form-row" style="grid-template-columns:1fr 1fr 1fr">
+                <div class="form-group">
+                  <label class="form-label">Job Type <span>*</span></label>
+                  <div class="csel" id="csel-jobtype">
+                    <button type="button" class="csel-trigger" onclick="toggleCsel('csel-jobtype')">
+                      <span class="csel-val placeholder">Job type</span>
+                      <svg class="csel-chev" fill="none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                    <div class="csel-list">
+                      <button type="button" class="csel-opt" data-val="garage" onclick="pickCsel('csel-jobtype','f-jobtype',this)">Garage Door</button>
+                      <button type="button" class="csel-opt" data-val="hvac" onclick="pickCsel('csel-jobtype','f-jobtype',this)">HVAC</button>
+                      <button type="button" class="csel-opt" data-val="plumbing" onclick="pickCsel('csel-jobtype','f-jobtype',this)">Plumbing</button>
+                      <button type="button" class="csel-opt" data-val="electric" onclick="pickCsel('csel-jobtype','f-jobtype',this)">Electrical</button>
+                      <button type="button" class="csel-opt" data-val="other" onclick="pickCsel('csel-jobtype','f-jobtype',this)">Other</button>
+                    </div>
+                    <input type="hidden" id="f-jobtype" />
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Job Source</label>
+                  <div class="csel" id="csel-jobsource">
+                    <button type="button" class="csel-trigger" onclick="toggleCsel('csel-jobsource')">
+                      <span class="csel-val placeholder">Job source</span>
+                      <svg class="csel-chev" fill="none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                    <div class="csel-list">
+                      <button type="button" class="csel-opt" data-val="Phone call" onclick="pickCsel('csel-jobsource','f-jobsource',this)">Phone call</button>
+                      <button type="button" class="csel-opt" data-val="Website" onclick="pickCsel('csel-jobsource','f-jobsource',this)">Website</button>
+                      <button type="button" class="csel-opt" data-val="Referral" onclick="pickCsel('csel-jobsource','f-jobsource',this)">Referral</button>
+                      <button type="button" class="csel-opt" data-val="Google" onclick="pickCsel('csel-jobsource','f-jobsource',this)">Google</button>
+                      <button type="button" class="csel-opt" data-val="Yelp" onclick="pickCsel('csel-jobsource','f-jobsource',this)">Yelp</button>
+                      <button type="button" class="csel-opt" data-val="Other" onclick="pickCsel('csel-jobsource','f-jobsource',this)">Other</button>
+                    </div>
+                    <input type="hidden" id="f-jobsource" />
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Description</label>
+                  <textarea class="form-textarea" id="f-desc" placeholder="Job description…"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- Scheduled -->
+            <div class="form-card" style="grid-column: 1 / -1; margin-top:0">
+              <div class="form-card-header">
+                <div class="form-card-title">Scheduled</div>
+              </div>
+              <!-- Dates row -->
+              <div class="schedule-row" style="margin-bottom:12px">
+                <div class="form-group">
+                  <label class="form-label">Start Date</label>
+                  <input class="form-input" type="date" id="f-start-date" />
+                </div>
+                <div class="schedule-sep">→</div>
+                <div class="form-group">
+                  <label class="form-label">End Date</label>
+                  <input class="form-input" type="date" id="f-end-date" />
+                </div>
+              </div>
+              <!-- Times row -->
+              <div class="schedule-row">
+                <div class="form-group">
+                  <label class="form-label">Start Time</label>
+                  <input class="form-input" type="time" id="f-start-time" value="08:00" onchange="autoSetEndTime()" style="color-scheme:light;" />
+                </div>
+                <div class="schedule-sep">→</div>
+                <div class="form-group">
+                  <label class="form-label">End Time</label>
+                  <input class="form-input" type="time" id="f-end-time" value="10:00" style="color-scheme:light;" />
+                </div>
+              </div>
+            </div>
+
+          </div><!-- /form-grid -->
+
+          <div class="form-footer">
+            <button type="submit" class="btn btn-primary">
+              <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" d="M5 12l5 5L20 7"/></svg>
+              Save Lead
+            </button>
+            <button type="button" class="btn btn-ghost" onclick="resetForm()">Clear</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- ── Today Page ── -->
+      <div class="page" id="page-today">
+        <div class="filter-bar">
+          <div class="view-toggle">
+            <button class="view-btn active" id="vbtn-today-timeline" onclick="setTodayView('timeline')">
+              <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+            </button>
+            <button class="view-btn" id="vbtn-today-table" onclick="setTodayView('table')">
+              <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8"><path d="M3 10h18M3 6h18M3 14h18M3 18h18"/></svg>
+            </button>
+          </div>
+        </div>
+        <div id="today-container"></div>
+      </div>
+
+      <!-- ── Week Page ── -->
+      <div class="page" id="page-week">
+        <div class="filter-bar">
+          <div class="view-toggle">
+            <button class="view-btn active" id="vbtn-week-timeline" onclick="setWeekView('timeline')">
+              <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+            </button>
+            <button class="view-btn" id="vbtn-week-table" onclick="setWeekView('table')">
+              <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8"><path d="M3 10h18M3 6h18M3 14h18M3 18h18"/></svg>
+            </button>
+          </div>
+        </div>
+        <div id="week-container"></div>
+      </div>
+
+      <!-- ── Phone Tracker Page ── -->
+      <div class="page" id="page-phone-tracker">
+        <div class="phone-tracker-header">
+          <div style="font-size:15px; font-weight:650; color:var(--text-1);">Phone Call Follow-ups</div>
+          <button class="icon-btn" id="pt-add-toggle" onclick="togglePhoneAddForm()" title="Add follow-up" style="width:34px;height:34px;border-radius:50%;background:#F5A623;border:none;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(245,166,35,0.4);transition:transform 0.2s,background 0.2s;">
+            <svg fill="none" viewBox="0 0 24 24" stroke-width="2.5" style="width:16px;height:16px;stroke:#fff;"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
+          </button>
+        </div>
+
+        <!-- Add row (collapsed by default) -->
+        <div class="phone-add-row pt-hidden" id="pt-add-form" style="margin-bottom:20px;">
+          <div class="form-group">
+            <label class="form-label">Phone Number <span style="color:var(--danger)">*</span></label>
+            <input class="form-input" id="pt-phone" type="tel" placeholder="555-000-0000" oninput="this.value=formatPhone(this.value)" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Job Type <span style="color:var(--danger)">*</span></label>
+            <div class="csel" id="csel-pt-jobtype">
+              <button type="button" class="csel-trigger" onclick="toggleCsel('csel-pt-jobtype')">
+                <span class="csel-val placeholder">Job type</span>
+                <svg class="csel-chev" fill="none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <div class="csel-list">
+                <button type="button" class="csel-opt" data-val="airduct" onclick="pickCsel('csel-pt-jobtype','pt-jobtype',this)">Air Duct / Dryer</button>
+                <button type="button" class="csel-opt" data-val="chimney" onclick="pickCsel('csel-pt-jobtype','pt-jobtype',this)">Chimney</button>
+                <button type="button" class="csel-opt" data-val="sliding" onclick="pickCsel('csel-pt-jobtype','pt-jobtype',this)">Sliding Door</button>
+                <button type="button" class="csel-opt" data-val="garage" onclick="pickCsel('csel-pt-jobtype','pt-jobtype',this)">Garage Door</button>
+              </div>
+              <input type="hidden" id="pt-jobtype" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Next Contact Date <span style="color:var(--danger)">*</span></label>
+            <input class="form-input" type="date" id="pt-next-date" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notes</label>
+            <input class="form-input" id="pt-notes" placeholder="Brief details…" />
+          </div>
+          <button class="btn btn-primary" onclick="addPhoneEntry()" style="white-space:nowrap; align-self:flex-end;">
+            <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
+            Add
+          </button>
+        </div>
+
+        <!-- Due Today -->
+        <div id="phone-today-section" style="display:none; margin-bottom:20px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <div style="width:8px; height:8px; border-radius:50%; background:var(--danger);"></div>
+            <span style="font-size:13px; font-weight:650; color:var(--text-1);">Due Today</span>
+          </div>
+          <div class="phone-table-wrap" style="border-color:rgba(239,68,68,0.3);">
+            <table class="phone-table">
+              <thead>
+                <tr>
+                  <th>Phone Number</th>
+                  <th>Job Type</th>
+                  <th>Attempts</th>
+                  <th>Next Contact</th>
+                  <th>Notes</th>
+                  <th>Added</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="phone-today-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- All Follow-ups -->
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+          <div style="width:8px; height:8px; border-radius:50%; background:var(--border-light);"></div>
+          <span style="font-size:13px; font-weight:650; color:var(--text-1);">All Follow-ups</span>
+        </div>
+        <div class="phone-table-wrap">
+          <table class="phone-table">
+            <thead>
+              <tr>
+                <th>Phone Number</th>
+                <th>Job Type</th>
+                <th>Attempts</th>
+                <th>Next Contact</th>
+                <th>Notes</th>
+                <th>Added</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="phone-list-body">
+              <tr><td colspan="7" style="text-align:center; padding:48px; color:var(--text-3);">No follow-ups yet — add one above.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Archive -->
+        <div id="phone-archive-section" style="display:none; margin-top:28px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <div style="width:8px; height:8px; border-radius:50%; background:var(--text-3);"></div>
+            <span style="font-size:13px; font-weight:650; color:var(--text-2);">Archived / Lost</span>
+            <span id="archive-count-badge" style="font-size:11px; background:var(--surface-3); color:var(--text-3); padding:1px 7px; border-radius:10px; font-weight:600;"></span>
+          </div>
+          <div id="archive-list-wrap" class="phone-table-wrap" style="border-color:var(--surface-3);">
+            <table class="phone-table archive-table" id="archive-table">
+              <thead>
+                <tr>
+                  <th>Phone Number</th>
+                  <th>Job Type</th>
+                  <th>Notes</th>
+                  <th>Archived</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="phone-archive-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- Toast container -->
+<div class="toast-container" id="toasts"></div>
+
+<!-- Delete modal -->
+<div class="modal-overlay" id="del-modal">
+  <div class="modal">
+    <div class="modal-title">Delete Lead?</div>
+    <div class="modal-body">This action cannot be undone. The lead will be permanently removed from your pipeline.</div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Google Maps API ─── -->
+<!--
+  IMPORTANT: Replace YOUR_API_KEY below with your actual Google Maps API key.
+  Enable "Places API" in your Google Cloud Console.
+  https://console.cloud.google.com/apis/library/places-backend.googleapis.com
+-->
+<script>
+  // ────────────────────────────────────────────────────────────────
+  // CONFIG — replace with your Google Maps API key
+  // ────────────────────────────────────────────────────────────────
+  const GOOGLE_MAPS_API_KEY = 'AIzaSyBoOnjOEBAp1nEAOUy8k-645dDW_XLAvjQ';
+
+  // ────────────────────────────────────────────────────────────────
+  // State
+  // ────────────────────────────────────────────────────────────────
+  let leads = [];
+  let phoneEntries = [];
+  let phoneArchive = [];
+  const SUPA_URL = 'https://zwnsmuawmsvvqhsgxxsb.supabase.co';
+  const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp3bnNtdWF3bXN2dnFoc2d4eHNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3MTgwMDUsImV4cCI6MjA5MTI5NDAwNX0.0J0Cnmb2z0K3lSh2TDFRfmfp2PysqLexqGX66Il7_tg';
+  const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+  let currentUser = null;
+  let currentProfile = null;
+  let archiveOpen  = true;
+  let currentView = 'table';
+  let todayView   = 'timeline';
+  let weekView    = 'timeline';
+  let deleteId    = null;
+  let addressValid = false;
+  let autocompleteService = null;
+  let sessionToken = null;
+  let highlightedIdx = -1;
+  let currentSuggestions = [];
+  let addressDebounceTimer = null;
+
+  // Avatar colors pool
+  const avatarColors = ['#3B82F6','#8B5CF6','#10B981','#F59E0B','#EF4444','#06B6D4','#EC4899'];
+  function getAvatarColor(str) {
+    let h = 0;
+    for (let i=0; i<str.length; i++) h = str.charCodeAt(i) + ((h<<5)-h);
+    return avatarColors[Math.abs(h) % avatarColors.length];
+  }
+  function initials(f, l) { return (f[0]||'').toUpperCase() + (l[0]||'').toUpperCase(); }
+
+  // ────────────────────────────────────────────────────────────────
+  // Seed sample data (only once, when there's no data)
+  // ────────────────────────────────────────────────────────────────
+  if (leads.length === 0) {
+    function makeSchedule(isoDate, startH, endH) {
+      const s = new Date(isoDate); s.setHours(startH,0,0,0);
+      const e = new Date(isoDate); e.setHours(endH,0,0,0);
+      return { scheduledStart: s.toISOString(), scheduledEnd: e.toISOString() };
+    }
+    const sampleData = [
+      { id: genId(), firstName:'Mike',    lastName:'Johnson', jobId:'JOB-001', address:'1234 Oak Ave', city:'Austin', state:'TX', zip:'78701', jobType:'garage',   date: todayISO(),        ...makeSchedule(todayISO(), 8, 10)  },
+      { id: genId(), firstName:'Sarah',   lastName:'Williams',jobId:'JOB-002', address:'567 Maple St', city:'Dallas', state:'TX', zip:'75201', jobType:'hvac',     date: todayISO(),        ...makeSchedule(todayISO(), 14, 16) },
+      { id: genId(), firstName:'Robert',  lastName:'Brown',   jobId:'JOB-003', address:'890 Pine Rd',  city:'Houston',state:'TX', zip:'77001', jobType:'plumbing', date: thisWeekISO(-2),   ...makeSchedule(thisWeekISO(-2), 10, 12) },
+      { id: genId(), firstName:'Jennifer',lastName:'Davis',   jobId:'JOB-004', address:'321 Elm Dr',   city:'San Antonio',state:'TX',zip:'78201',jobType:'electric',date: thisWeekISO(-1),  ...makeSchedule(thisWeekISO(-1), 8, 10)  },
+      { id: genId(), firstName:'Carlos',  lastName:'Martinez',jobId:'JOB-005', address:'654 Cedar Ln', city:'Fort Worth',state:'TX',zip:'76101',jobType:'garage',  date: thisWeekISO(1),    ...makeSchedule(thisWeekISO(1), 13, 15)  },
+      { id: genId(), firstName:'Linda',   lastName:'Wilson',  jobId:'JOB-006', address:'987 Birch Blvd',city:'Austin',state:'TX',zip:'78702', jobType:'other',    date: thisWeekISO(2),    ...makeSchedule(thisWeekISO(2), 9, 11)   },
+    ];
+    leads = sampleData;
+    saveLeads();
+  }
+
+  function todayISO() { return new Date().toISOString(); }
+  function thisWeekISO(dayOffset) {
+    const d = new Date();
+    d.setDate(d.getDate() + dayOffset);
+    return d.toISOString();
+  }
+  function pastISO(daysAgo) {
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    return d.toISOString();
+  }
+
+  function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function saveLeads() { /* data persisted directly on each operation */ }
+
+  // ────────────────────────────────────────────────────────────────
+  // Navigation
+  // ────────────────────────────────────────────────────────────────
+  const pageTitles = { dashboard:'Dashboard', 'all-leads':'All Leads', 'add-lead':'Add Lead', today:"Today's Leads", week:'This Week', 'phone-tracker':'Phone Tracker' };
+
+  function navigate(el, page) {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    el.classList.add('active');
+    syncBottomNav(page);
+    document.getElementById('topbar-actions').style.display = page === 'phone-tracker' ? 'none' : '';
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+    document.getElementById('page-title').textContent = pageTitles[page];
+    if (page === 'dashboard')   renderDashboard();
+    if (page === 'all-leads')   renderAll();
+    if (page === 'today')       renderToday();
+    if (page === 'week')        renderWeek();
+    if (page === 'add-lead')      setTimeout(attachGoogleWidget, 50);
+    if (page === 'phone-tracker') renderPhoneTracker();
+  }
+
+  // ────────────────────────────────────────────────────────────────
+  // Render helpers
+  // ────────────────────────────────────────────────────────────────
+  const jobLabels = { garage:'Garage Door', hvac:'HVAC', plumbing:'Plumbing', electric:'Electrical', other:'Other', airduct:'Air Duct / Dryer', chimney:'Chimney', sliding:'Sliding Door' };
+
+  function fmtDate(iso) {
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+  }
+  function fmtTime(iso) {
+    const d = new Date(iso);
+    return d.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
+  }
+  function isToday(iso) {
+    const d = new Date(iso), n = new Date();
+    return d.getFullYear()===n.getFullYear() && d.getMonth()===n.getMonth() && d.getDate()===n.getDate();
+  }
+  function isThisWeek(iso) {
+    const d = new Date(iso), n = new Date();
+    const startOfWeek = new Date(n); startOfWeek.setDate(n.getDate()-n.getDay()); startOfWeek.setHours(0,0,0,0);
+    const endOfWeek   = new Date(startOfWeek); endOfWeek.setDate(startOfWeek.getDate()+7);
+    return d >= startOfWeek && d < endOfWeek;
+  }
+
+  function syncBottomNav(page) {
+    document.querySelectorAll('.bottom-nav-item').forEach(el => {
+      el.classList.toggle('active', el.dataset.page === page);
+    });
+  }
+
+  function updateBadges() {
+    const todayLeads = leads.filter(l => isToday(l.date));
+    const weekLeads  = leads.filter(l => isThisWeek(l.date));
+    document.getElementById('badge-all').textContent   = leads.length;
+    document.getElementById('badge-today').textContent = todayLeads.length;
+    document.getElementById('badge-week').textContent  = weekLeads.length;
+    document.getElementById('badge-phone').textContent = phoneEntries.length;
+  }
+
+  // ── Table HTML ──
+  function tableHTML(arr) {
+    if (!arr.length) return emptyHTML('No leads found', 'Try adjusting your search or add a new lead.');
+    return `
+    <div class="leads-table-wrap">
+      <table class="leads-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Job ID</th>
+            <th>Job Type</th>
+            <th>Address</th>
+            <th>Date Added</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${arr.map(lead => `
+          <tr>
+            <td>
+              <div class="lead-name-cell">
+                <div class="lead-avatar" style="background:${getAvatarColor(lead.firstName+lead.lastName)}">${initials(lead.firstName,lead.lastName)}</div>
+                <div>
+                  <div style="font-weight:600">${lead.firstName} ${lead.lastName}</div>
+                </div>
+              </div>
+            </td>
+            <td><span class="id-chip">${lead.jobId}</span></td>
+            <td><span class="job-badge ${lead.jobType}">${jobLabels[lead.jobType]||lead.jobType}</span></td>
+            <td>
+              <div style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-2);font-size:12.5px">${lead.address}</div>
+            </td>
+            <td><span class="date-chip">${fmtDate(lead.date)}</span></td>
+            <td>
+              <div class="action-btns">
+                <button class="icon-btn del" onclick="deleteLead('${lead.id}',event)" title="Delete">
+                  <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path stroke-linecap="round" d="M19 6l-1 14H6L5 6M10 11v6M14 11v6"/><path stroke-linecap="round" d="M9 6V4h6v2"/></svg>
+                </button>
+              </div>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+  }
+
+  // ── List HTML ──
+  function listHTML(arr) {
+    if (!arr.length) return emptyHTML('No leads found', 'Try adjusting your search or add a new lead.');
+    return `<div class="leads-list">${arr.map(lead => `
+    <div class="lead-card">
+      <div class="lead-avatar" style="background:${getAvatarColor(lead.firstName+lead.lastName)};width:40px;height:40px;font-size:14px">${initials(lead.firstName,lead.lastName)}</div>
+      <div class="lead-card-info">
+        <div class="lead-card-name">${lead.firstName} ${lead.lastName}</div>
+        <div class="lead-card-meta">
+          <span>
+            <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            ${fmtDate(lead.date)} · ${fmtTime(lead.date)}
+          </span>
+          <span>
+            <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><circle cx="12" cy="11" r="3"/></svg>
+            ${lead.address}
+          </span>
+        </div>
+      </div>
+      <div class="lead-card-right">
+        <span class="job-badge ${lead.jobType}">${jobLabels[lead.jobType]||lead.jobType}</span>
+        <span class="id-chip">${lead.jobId}</span>
+      </div>
+      <button class="icon-btn del" onclick="deleteLead('${lead.id}',event)" title="Delete">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path stroke-linecap="round" d="M19 6l-1 14H6L5 6M10 11v6M14 11v6"/><path stroke-linecap="round" d="M9 6V4h6v2"/></svg>
+      </button>
+    </div>`).join('')}</div>`;
+  }
+
+  function fmt12(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return d.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit', hour12: true });
+  }
+  function fmtDayName(iso) { return new Date(iso).toLocaleDateString('en-US', { weekday:'short' }); }
+  function fmtDayNum(iso)  { return new Date(iso).getDate(); }
+
+  function groupByDay(arr) {
+    const map = new Map();
+    arr.forEach(lead => {
+      const d    = new Date(lead.scheduledStart || lead.date);
+      const key  = d.toLocaleDateString('en-US', { year:'numeric', month:'2-digit', day:'2-digit' });
+      if (!map.has(key)) map.set(key, { date: d, leads: [] });
+      map.get(key).leads.push(lead);
+    });
+    return Array.from(map.values()).sort((a,b) => a.date - b.date);
+  }
+
+  function timelineHTML(arr, emptyMsg) {
+    if (!arr.length) return `<div class="timeline-empty">${emptyHTML(emptyMsg, 'No leads scheduled for this period.')}</div>`;
+    const groups = groupByDay(arr);
+    return `<div class="timeline">${groups.map(g => `
+      <div class="timeline-group">
+        <div class="timeline-date-col">
+          <div class="timeline-day">${fmtDayName(g.date)}</div>
+          <div class="timeline-num">${fmtDayNum(g.date)}</div>
+        </div>
+        <div class="timeline-cards-col">
+          ${g.leads.map(lead => {
+            const hasTime = lead.scheduledStart;
+            const timeRange = hasTime
+              ? `${fmt12(lead.scheduledStart)} – ${fmt12(lead.scheduledEnd)}`
+              : fmtDate(lead.date);
+            const jobLabel = jobLabels[lead.jobType] || lead.jobType || 'Job';
+            const fullAddr = [lead.address, lead.city, lead.state, lead.zip].filter(Boolean).join(', ');
+            return `
+            <div class="timeline-card tl-card-${lead.jobType||'other'}">
+              <div class="timeline-card-top">
+                <span class="timeline-job-id">JOB #${lead.jobId || ''}</span>
+                <div class="timeline-sep"></div>
+                <span class="timeline-status">Submitted</span>
+                <button class="timeline-more" onclick="deleteLead('${lead.id}',event)" title="Delete">⋯</button>
+              </div>
+              <div class="timeline-time">${timeRange} <span>(${jobLabel})</span></div>
+              <div class="timeline-client">${lead.firstName} ${lead.lastName}</div>
+              <div class="timeline-addr">
+                <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+                ${fullAddr || lead.address || '—'}
+              </div>
+              <div class="timeline-footer">
+                <span class="job-badge ${lead.jobType||'other'}">${jobLabel}</span>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`).join('')}
+    </div>`;
+  }
+
+  function emptyHTML(title, sub) {
+    return `<div class="empty-state">
+      <div class="empty-icon"><svg fill="none" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+      <div class="empty-title">${title}</div>
+      <div class="empty-sub">${sub}</div>
+      <button class="btn btn-primary" onclick="navigate(document.querySelector('[data-page=add-lead]'),'add-lead')">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
+        Add Lead
+      </button>
+    </div>`;
+  }
+
+  // ────────────────────────────────────────────────────────────────
+  // Page Renders
+  // ────────────────────────────────────────────────────────────────
+  function renderDashboard() {
+    const todayLeads = leads.filter(l => isToday(l.date));
+    const weekLeads  = leads.filter(l => isThisWeek(l.date));
+    const types = new Set(leads.map(l => l.jobType));
+    document.getElementById('stat-total').textContent = leads.length;
+    document.getElementById('stat-today').textContent = todayLeads.length;
+    document.getElementById('stat-week').textContent  = weekLeads.length;
+    document.getElementById('stat-types').textContent = types.size;
+    const recent = [...leads].sort((a,b) => new Date(b.date)-new Date(a.date)).slice(0,5);
+    document.getElementById('dashboard-recent').innerHTML = tableHTML(recent);
+    updateBadges();
+  }
+
+  function renderAll() {
+    const q = (document.getElementById('search-all')?.value||'').toLowerCase();
+    let arr = q ? leads.filter(l =>
+      `${l.firstName} ${l.lastName} ${l.jobId} ${l.address} ${l.jobType}`.toLowerCase().includes(q)
+    ) : [...leads];
+    arr.sort((a,b) => new Date(b.date)-new Date(a.date));
+    document.getElementById('leads-container').innerHTML = currentView==='table' ? tableHTML(arr) : listHTML(arr);
+  }
+
+  function renderToday() {
+    const arr = leads.filter(l => isToday(l.scheduledStart || l.date)).sort((a,b) => new Date(a.scheduledStart||a.date)-new Date(b.scheduledStart||b.date));
+    if (todayView === 'timeline') {
+      document.getElementById('today-container').innerHTML = timelineHTML(arr, "No leads today");
+    } else {
+      document.getElementById('today-container').innerHTML = tableHTML(arr);
+    }
+  }
+
+  function renderWeek() {
+    const arr = leads.filter(l => isThisWeek(l.scheduledStart || l.date)).sort((a,b) => new Date(a.scheduledStart||a.date)-new Date(b.scheduledStart||b.date));
+    if (weekView === 'timeline') {
+      document.getElementById('week-container').innerHTML = timelineHTML(arr, "No leads this week");
+    } else {
+      document.getElementById('week-container').innerHTML = tableHTML(arr);
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────
+  // View toggles
+  // ────────────────────────────────────────────────────────────────
+  function setView(v) {
+    currentView = v;
+    document.getElementById('vbtn-table').classList.toggle('active', v==='table');
+    document.getElementById('vbtn-list').classList.toggle('active',  v==='list');
+    renderAll();
+  }
+  function setTodayView(v) {
+    todayView = v;
+    document.getElementById('vbtn-today-timeline').classList.toggle('active', v==='timeline');
+    document.getElementById('vbtn-today-table').classList.toggle('active',    v==='table');
+    renderToday();
+  }
+  function setWeekView(v) {
+    weekView = v;
+    document.getElementById('vbtn-week-timeline').classList.toggle('active', v==='timeline');
+    document.getElementById('vbtn-week-table').classList.toggle('active',    v==='table');
+    renderWeek();
+  }
+
+  // ────────────────────────────────────────────────────────────────
+  // Delete
+  // ────────────────────────────────────────────────────────────────
+  function deleteLead(id, e) {
+    e.stopPropagation();
+    deleteId = id;
+    document.getElementById('del-modal').classList.add('open');
+  }
+  function closeModal() {
+    document.getElementById('del-modal').classList.remove('open');
+    deleteId = null;
+  }
+  function confirmDelete() {
+    leads = leads.filter(l => l.id !== deleteId);
+    saveLeads();
+    dbDeleteLead(deleteId);
+    closeModal();
+    showToast('Lead deleted.', 'error');
+    renderDashboard();
+    renderAll();
+    renderToday();
+    renderWeek();
+    updateBadges();
+  }
+
+  // ────────────────────────────────────────────────────────────────
+  // Add Lead Form
+  // ────────────────────────────────────────────────────────────────
+  function submitLead(e) {
+    e.preventDefault();
+    const addr = document.getElementById('f-address').value.trim();
+    if (!addressValid || !addr) {
+      document.getElementById('f-address-error').style.display = 'block';
+      document.getElementById('f-address').focus();
+      return;
+    }
+    document.getElementById('f-address-error').style.display = 'none';
+    const nextNum = leads.length + 1;
+    const lead = {
+      id:        genId(),
+      jobId:     `JOB-${String(nextNum).padStart(3,'0')}`,
+      firstName: document.getElementById('f-first').value.trim(),
+      lastName:  document.getElementById('f-last').value.trim(),
+      phone:     document.getElementById('f-phone').value.trim(),
+      email:     document.getElementById('f-email').value.trim(),
+      address:   addr,
+      unit:      document.getElementById('f-unit').value.trim(),
+      city:      document.getElementById('f-city').value.trim(),
+      state:     document.getElementById('f-state').value.trim(),
+      zip:       document.getElementById('f-zip').value.trim(),
+      jobName:   document.getElementById('f-jobname').value.trim(),
+      jobType:   document.getElementById('f-jobtype').value,
+      jobSource: document.getElementById('f-jobsource').value,
+      description: document.getElementById('f-desc').value.trim(),
+      date:      new Date().toISOString(),
+      scheduledStart: (() => {
+        const d = document.getElementById('f-start-date').value;
+        const t = document.getElementById('f-start-time').value;
+        return d && t ? new Date(`${d}T${t}:00`).toISOString() : null;
+      })(),
+      scheduledEnd: (() => {
+        const d = document.getElementById('f-end-date').value;
+        const t = document.getElementById('f-end-time').value;
+        return d && t ? new Date(`${d}T${t}:00`).toISOString() : null;
+      })()
+    };
+    leads.unshift(lead);
+    saveLeads();
+    dbSaveLead(lead);
+    resetForm();
+    updateBadges();
+    showToast(`Lead "${lead.firstName} ${lead.lastName}" added!`, 'success');
+  }
+
+  function toggleCsel(id) {
+    const el = document.getElementById(id);
+    const isOpen = el.classList.contains('open');
+    document.querySelectorAll('.csel.open').forEach(e => e.classList.remove('open'));
+    if (!isOpen) el.classList.add('open');
+  }
+  function pickCsel(cselId, inputId, opt) {
+    const csel = document.getElementById(cselId);
+    const val = opt.dataset.val;
+    csel.querySelector('.csel-val').textContent = opt.textContent;
+    csel.querySelector('.csel-val').classList.remove('placeholder');
+    document.getElementById(inputId).value = val;
+    csel.querySelectorAll('.csel-opt').forEach(o => o.classList.toggle('selected', o === opt));
+    csel.classList.remove('open');
+  }
+  function resetCsel(cselId, placeholder) {
+    const csel = document.getElementById(cselId);
+    if (!csel) return;
+    csel.querySelector('.csel-val').textContent = placeholder;
+    csel.querySelector('.csel-val').classList.add('placeholder');
+    csel.querySelectorAll('.csel-opt').forEach(o => o.classList.remove('selected'));
+    const inp = csel.querySelector('input[type=hidden]');
+    if (inp) inp.value = '';
+  }
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.csel')) document.querySelectorAll('.csel.open').forEach(el => el.classList.remove('open'));
+  });
+
+  function autoSetEndTime() {
+    const val = document.getElementById('f-start-time').value; // "HH:MM"
+    if (!val) return;
+    const [h, m] = val.split(':').map(Number);
+    const endH = (h + 2) % 24;
+    document.getElementById('f-end-time').value =
+      String(endH).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+  }
+
+  function resetForm() {
+    document.getElementById('lead-form').reset();
+    document.getElementById('f-country').value = 'United States';
+    addressValid = false;
+    document.getElementById('f-address-error').style.display = 'none';
+    document.getElementById('verified-badge').style.display = 'none';
+    closePac();
+    // Default schedule: today, 8am–10am
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('f-start-date').value = today;
+    document.getElementById('f-start-time').value = '08:00';
+    document.getElementById('f-end-date').value   = today;
+    document.getElementById('f-end-time').value   = '10:00';
+    resetCsel('csel-jobtype', 'Job type');
+    resetCsel('csel-jobsource', 'Job source');
+  }
+
+  // ────────────────────────────────────────────────────────────────
+  // Google Places REST API (no Maps JS SDK needed — CORS enabled)
+  // Requires only "Places API (New)" enabled in Google Cloud Console
+  // ────────────────────────────────────────────────────────────────
+  const PLACES_API_KEY = 'AIzaSyBoOnjOEBAp1nEAOUy8k-645dDW_XLAvjQ';
+
+  function initGooglePlaces() {} // SDK not used anymore
+  function attachGoogleWidget() {}
+
+  function onAddressInput() {
+    addressValid = false;
+    const val = document.getElementById('f-address').value.trim();
+    if (!val || val.length < 3) { closePac(); return; }
+    clearTimeout(addressDebounceTimer);
+    addressDebounceTimer = setTimeout(() => fetchAddressSuggestions(val), 220);
+  }
+
+  async function fetchAddressSuggestions(val) {
+    if (document.getElementById('f-address').value.trim() !== val) return;
+
+    // Google Places API (New) — direct REST, no JS SDK required
+    try {
+      const res = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': PLACES_API_KEY,
+        },
+        body: JSON.stringify({
+          input: val,
+          includedRegionCodes: ['us'],
+          includedPrimaryTypes: ['street_address', 'premise', 'subpremise', 'route'],
+        })
+      });
+      const data = await res.json();
+      if (data.suggestions && data.suggestions.length) {
+        currentSuggestions = data.suggestions;
+        renderSuggestions(data.suggestions.map(s => {
+          const p = s.placePrediction;
+          return {
+            main:      p.structuredFormat?.mainText?.text      || p.text?.text || '',
+            secondary: p.structuredFormat?.secondaryText?.text || '',
+            full:      p.text?.text || ''
+          };
+        }));
+        return;
+      }
+    } catch(e) { /* fall through */ }
+
+    // Free fallback: Photon + Nominatim
+    await showFallbackSuggestions(val);
+  }
+
+  async function showFallbackSuggestions(val) {
+    // Check current input still matches (user may have kept typing)
+    if (document.getElementById('f-address').value.trim() !== val) return;
+
+    let results = [];
+
+    // Source 1: Photon — best for partial text autocomplete
+    try {
+      const bbox = '-125.0,24.5,-66.9,49.4';
+      const r1   = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(val)}&limit=8&lang=en&bbox=${bbox}`);
+      const d1   = await r1.json();
+      results = (d1.features || [])
+        .filter(f => (f.properties || {}).country === 'United States')
+        .slice(0, 6)
+        .map(f => {
+          const p    = f.properties || {};
+          const num  = p.housenumber || '';
+          const str  = p.street || p.name || '';
+          const main = [num, str].filter(Boolean).join(' ') || p.name || '';
+          const city = p.city || p.town || p.village || p.county || '';
+          const state = p.state || '';
+          const zip   = p.postcode || '';
+          return {
+            main: main || [city, state].filter(Boolean).join(', '),
+            secondary: [city, state, zip].filter(Boolean).join(', '),
+            full: [num, str, city, state, zip, 'USA'].filter(Boolean).join(', '),
+            city, state, zip
+          };
+        })
+        .filter(r => r.main);
+    } catch(e) {}
+
+    // Source 2: Nominatim fallback if Photon returned nothing
+    if (!results.length) {
+      try {
+        const r2  = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&limit=5&countrycodes=us&addressdetails=1`);
+        const d2  = await r2.json();
+        results = (d2 || []).slice(0, 5).map(item => {
+          const a   = item.address || {};
+          const num = a.house_number || '';
+          const str = a.road || '';
+          const main = [num, str].filter(Boolean).join(' ') || item.display_name.split(',')[0];
+          const city = a.city || a.town || a.village || '';
+          const state = a.state || '';
+          const zip   = a.postcode || '';
+          return {
+            main,
+            secondary: [city, state, zip].filter(Boolean).join(', '),
+            full: [main, city, state, zip, 'USA'].filter(Boolean).join(', '),
+            city, state, zip
+          };
+        });
+      } catch(e) {}
+    }
+
+    if (!results.length) { closePac(); return; }
+    currentSuggestions = results;
+    renderSuggestions(results);
+  }
+
+  function renderSuggestions(items) {
+    const drop = document.getElementById('pac-dropdown');
+    if (!items.length) { closePac(); return; }
+    highlightedIdx = -1;
+    drop.innerHTML = items.map((item, i) => `
+      <div class="pac-item" data-idx="${i}" onmousedown="selectSuggestion(${i})">
+        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+        <div>
+          <div class="pac-item-main">${item.main}</div>
+          <div class="pac-item-secondary">${item.secondary}</div>
+        </div>
+      </div>`).join('');
+    drop.style.display = 'block';
+  }
+
+  async function selectSuggestion(idx) {
+    const item = currentSuggestions[idx];
+    if (!item) return;
+
+    // For Google suggestions — fetch place details to get city/state/zip
+    if (item.placePrediction) {
+      const placeId = item.placePrediction.placeId;
+      document.getElementById('f-address').value = item.placePrediction.text?.text || '';
+      try {
+        const res  = await fetch(`https://places.googleapis.com/v1/places/${placeId}?fields=addressComponents&key=${PLACES_API_KEY}`);
+        const data = await res.json();
+        const comps = data.addressComponents || [];
+        const get = (type) => (comps.find(c => c.types?.includes(type)) || {});
+        const streetNum  = get('street_number').longText || '';
+        const route      = get('route').longText || '';
+        const city       = get('locality').longText || get('sublocality').longText || '';
+        const state      = get('administrative_area_level_1').longText || '';
+        const zip        = get('postal_code').longText || '';
+        document.getElementById('f-address').value = [streetNum, route].filter(Boolean).join(' ') || document.getElementById('f-address').value;
+        document.getElementById('f-city').value  = city;
+        document.getElementById('f-state').value = state;
+        document.getElementById('f-zip').value   = zip;
+      } catch(e) {}
+    } else {
+      // Photon/Nominatim suggestion
+      const full = item.full || item.description || '';
+      // Show just street part in address field
+      const streetPart = [item.main].filter(Boolean).join(' ');
+      document.getElementById('f-address').value = streetPart || full;
+      if (item.city)  document.getElementById('f-city').value  = item.city;
+      if (item.state) document.getElementById('f-state').value = item.state;
+      if (item.zip)   document.getElementById('f-zip').value   = item.zip;
+    }
+
+    addressValid = true;
+    document.getElementById('f-address-error').style.display = 'none';
+    document.getElementById('verified-badge').style.display  = 'inline-flex';
+    closePac();
+  }
+
+  function onAddressKey(e) {
+    const drop = document.getElementById('pac-dropdown');
+    const items = drop.querySelectorAll('.pac-item');
+    if (e.key === 'ArrowDown') { e.preventDefault(); highlightedIdx = Math.min(highlightedIdx+1, items.length-1); updateHighlight(items); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); highlightedIdx = Math.max(highlightedIdx-1, -1); updateHighlight(items); }
+    else if (e.key === 'Enter' && highlightedIdx >= 0) { e.preventDefault(); selectSuggestion(highlightedIdx); }
+    else if (e.key === 'Escape') { closePac(); }
+  }
+
+  function updateHighlight(items) {
+    items.forEach((el, i) => el.classList.toggle('highlighted', i === highlightedIdx));
+  }
+
+  function closePac() {
+    document.getElementById('pac-dropdown').style.display = 'none';
+    currentSuggestions = [];
+    highlightedIdx = -1;
+  }
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.address-wrap')) closePac();
+  });
+
+  // ────────────────────────────────────────────────────────────────
+  // Toast
+  // ────────────────────────────────────────────────────────────────
+  function showToast(msg, type='success') {
+    const icon = type === 'success'
+      ? `<svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`
+      : `<svg fill="none" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" d="M19 7l-1 14H6L5 7"/><path stroke-linecap="round" d="M3 7h18M10 11v6M14 11v6M9 7V4h6v3"/></svg>`;
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.innerHTML = icon + `<span>${msg}</span>`;
+    document.getElementById('toasts').appendChild(el);
+    setTimeout(() => el.remove(), 4000);
+  }
+
+  // ────────────────────────────────────────────────────────────────
+  // Phone Tracker
+  // ────────────────────────────────────────────────────────────────
+  function savePhone() { /* data persisted directly on each operation */ }
+
+  // ─── DB mapping helpers ───
+  function leadToRow(l) {
+    return { id: l.id, job_id: l.jobId, first_name: l.firstName, last_name: l.lastName,
+      phone: l.phone, email: l.email, address: l.address, unit: l.unit,
+      city: l.city, state: l.state, zip: l.zip, country: l.country,
+      job_name: l.jobName, job_type: l.jobType, job_source: l.jobSource,
+      description: l.description, status: l.status, date: l.date,
+      scheduled_start: l.scheduledStart, scheduled_end: l.scheduledEnd };
+  }
+  function rowToLead(r) {
+    return { id: r.id, jobId: r.job_id, firstName: r.first_name, lastName: r.last_name,
+      phone: r.phone || '', email: r.email || '', address: r.address || '', unit: r.unit || '',
+      city: r.city || '', state: r.state || '', zip: r.zip || '', country: r.country || 'United States',
+      jobName: r.job_name || '', jobType: r.job_type || '', jobSource: r.job_source || '',
+      description: r.description || '', status: r.status || 'new', date: r.date,
+      scheduledStart: r.scheduled_start, scheduledEnd: r.scheduled_end };
+  }
+  function phoneEntryToRow(e) {
+    return { id: e.id, phone: e.phone, job_type: e.jobType, next_date: e.nextDate,
+      notes: e.notes || '', attempts: e.attempts || [false,false,false], added: e.added };
+  }
+  function rowToPhoneEntry(r) {
+    return { id: r.id, phone: r.phone, jobType: r.job_type || '', nextDate: r.next_date,
+      notes: r.notes || '', attempts: r.attempts || [false,false,false], added: r.added };
+  }
+  function phoneArchiveToRow(e) {
+    return { id: e.id, phone: e.phone, job_type: e.jobType, notes: e.notes || '',
+      attempts: e.attempts || [false,false,false], added: e.added, archived_at: e.archivedAt };
+  }
+  function rowToPhoneArchive(r) {
+    return { id: r.id, phone: r.phone, jobType: r.job_type || '', notes: r.notes || '',
+      attempts: r.attempts || [false,false,false], added: r.added, archivedAt: r.archived_at };
+  }
+
+  // ─── DB operations (fire-and-forget, optimistic UI) ───
+  function dbSaveLead(lead) {
+    sb.from('leads').upsert(leadToRow(lead)).then(({error}) => { if (error) showToast('Sync error: ' + error.message, 'error'); });
+  }
+  function dbDeleteLead(id) {
+    sb.from('leads').delete().eq('id', id).then(({error}) => { if (error) showToast('Sync error: ' + error.message, 'error'); });
+  }
+  function dbSavePhoneEntry(entry) {
+    sb.from('phone_entries').upsert(phoneEntryToRow(entry)).then(({error}) => { if (error) showToast('Sync error: ' + error.message, 'error'); });
+  }
+  function dbDeletePhoneEntry_db(id) {
+    sb.from('phone_entries').delete().eq('id', id).then(({error}) => { if (error) showToast('Sync error: ' + error.message, 'error'); });
+  }
+  function dbArchivePhoneEntry(entry) {
+    Promise.all([
+      sb.from('phone_entries').delete().eq('id', entry.id),
+      sb.from('phone_archive').insert(phoneArchiveToRow(entry))
+    ]).then(([r1, r2]) => { if (r1.error || r2.error) showToast('Sync error', 'error'); });
+  }
+  function dbRestorePhoneEntry(entry) {
+    Promise.all([
+      sb.from('phone_archive').delete().eq('id', entry.id),
+      sb.from('phone_entries').insert(phoneEntryToRow(entry))
+    ]).then(([r1, r2]) => { if (r1.error || r2.error) showToast('Sync error', 'error'); });
+  }
+  function dbDeletePhoneArchive(id) {
+    sb.from('phone_archive').delete().eq('id', id).then(({error}) => { if (error) showToast('Sync error: ' + error.message, 'error'); });
+  }
+  function isAdmin() { return currentProfile?.role === 'admin'; }
+
+  // ─── Auth ───
+  async function signIn(e) {
+    e.preventDefault();
+    const btn = document.getElementById('auth-submit');
+    btn.textContent = 'Signing in…'; btn.disabled = true;
+    const { error } = await sb.auth.signInWithPassword({
+      email: document.getElementById('auth-email').value,
+      password: document.getElementById('auth-password').value
+    });
+    btn.textContent = 'Sign In'; btn.disabled = false;
+    if (error) {
+      const el = document.getElementById('auth-error');
+      el.textContent = error.message; el.style.display = 'block';
+      return;
+    }
+    await initApp();
+  }
+  async function signOut() {
+    await sb.auth.signOut();
+    currentUser = null; currentProfile = null;
+    leads = []; phoneEntries = []; phoneArchive = [];
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('logout-btn').style.display = 'none';
+  }
+  async function initApp() {
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) { document.getElementById('auth-screen').style.display = 'flex'; return; }
+    currentUser = user;
+    const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single();
+    currentProfile = profile;
+    // Load data
+    const [leadsRes, entriesRes, archiveRes] = await Promise.all([
+      sb.from('leads').select('*').order('created_at', { ascending: false }),
+      sb.from('phone_entries').select('*').order('created_at', { ascending: false }),
+      sb.from('phone_archive').select('*').order('archived_at', { ascending: false })
+    ]);
+    leads = (leadsRes.data || []).map(rowToLead);
+    phoneEntries = (entriesRes.data || []).map(rowToPhoneEntry);
+    phoneArchive = (archiveRes.data || []).map(rowToPhoneArchive);
+    // Show app
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    document.getElementById('logout-btn').style.display = '';
+    // Render
+    renderDashboard();
+    updateBadges();
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('f-start-date').value = today;
+    document.getElementById('f-start-time').value = '08:00';
+    document.getElementById('f-end-date').value = today;
+    document.getElementById('f-end-time').value = '10:00';
+  }
+
+  function formatPhone(raw) {
+    const d = raw.replace(/\D/g, '').slice(0, 10);
+    if (d.length <= 3) return d;
+    if (d.length <= 6) return d.slice(0,3) + '-' + d.slice(3);
+    return d.slice(0,3) + '-' + d.slice(3,6) + '-' + d.slice(6);
+  }
+
+  function addPhoneEntry() {
+    const raw = document.getElementById('pt-phone').value.trim();
+    if (!raw) { showToast('Phone number is required.', 'error'); return; }
+    if (!document.getElementById('pt-jobtype').value) { showToast('Job type is required.', 'error'); return; }
+    if (!document.getElementById('pt-next-date').value) { showToast('Next contact date is required.', 'error'); return; }
+    const phone = formatPhone(raw);
+    const normalised = phone.replace(/\D/g, '');
+    const duplicate = [...phoneEntries, ...phoneArchive].some(e => e.phone.replace(/\D/g, '') === normalised);
+    if (duplicate) { showToast('This number is already in your list or archive.', 'error'); return; }
+    const entry = {
+      id: 'ph-' + Date.now(),
+      phone,
+      jobType:  document.getElementById('pt-jobtype').value,
+      nextDate: document.getElementById('pt-next-date').value,
+      notes:    document.getElementById('pt-notes').value.trim(),
+      attempts: [false, false, false],
+      added:    new Date().toISOString()
+    };
+    phoneEntries.unshift(entry);
+    savePhone();
+    dbSavePhoneEntry(entry);
+    updateBadges();
+    // Clear inputs
+    document.getElementById('pt-phone').value = '';
+    resetCsel('csel-pt-jobtype', 'Job type');
+    document.getElementById('pt-next-date').value = '';
+    document.getElementById('pt-notes').value = '';
+    renderPhoneTracker();
+    showToast(`Added ${phone}`, 'success');
+    // Close the add form
+    const form = document.getElementById('pt-add-form');
+    const btn  = document.getElementById('pt-add-toggle');
+    if (form) { form.classList.add('pt-hidden'); btn.style.transform = ''; btn.style.background = '#F5A623'; }
+  }
+
+  function updatePhoneNotes(id, val) {
+    const e = phoneEntries.find(e => e.id === id);
+    if (e) { e.notes = val; savePhone(); dbSavePhoneEntry(e); }
+  }
+
+  function updatePhoneDate(id, val) {
+    const e = phoneEntries.find(e => e.id === id);
+    if (e) { e.nextDate = val; savePhone(); dbSavePhoneEntry(e); renderPhoneTracker(); }
+  }
+
+  function toggleAttempt(id, idx) {
+    const e = phoneEntries.find(e => e.id === id);
+    if (!e) return;
+    if (!e.attempts) e.attempts = [false, false, false];
+    e.attempts[idx] = !e.attempts[idx];
+    savePhone();
+    dbSavePhoneEntry(e);
+  }
+
+  function deletePhoneEntry(id) {
+    phoneEntries = phoneEntries.filter(e => e.id !== id);
+    savePhone();
+    dbDeletePhoneEntry_db(id);
+    updateBadges();
+    renderPhoneTracker();
+  }
+
+  function archiveEntry(id) {
+    const idx = phoneEntries.findIndex(e => e.id === id);
+    if (idx === -1) return;
+    const entry = { ...phoneEntries[idx], archivedAt: new Date().toISOString() };
+    phoneArchive.unshift(entry);
+    phoneEntries.splice(idx, 1);
+    savePhone();
+    dbArchivePhoneEntry(entry);
+    updateBadges();
+    renderPhoneTracker();
+    showToast('Moved to archive', 'success');
+  }
+
+  function restoreEntry(id) {
+    const idx = phoneArchive.findIndex(e => e.id === id);
+    if (idx === -1) return;
+    const entry = { ...phoneArchive[idx] };
+    delete entry.archivedAt;
+    phoneEntries.unshift(entry);
+    phoneArchive.splice(idx, 1);
+    savePhone();
+    dbRestorePhoneEntry(entry);
+    updateBadges();
+    renderPhoneTracker();
+    showToast('Restored to follow-ups', 'success');
+  }
+
+  function togglePhoneAddForm() {
+    const form = document.getElementById('pt-add-form');
+    const btn  = document.getElementById('pt-add-toggle');
+    const open = form.classList.contains('pt-hidden');
+    form.classList.toggle('pt-hidden', !open);
+    btn.style.transform = open ? 'rotate(45deg)' : '';
+    btn.style.background = open ? 'var(--surface-3)' : '#F5A623';
+    if (open) document.getElementById('pt-phone').focus();
+  }
+
+  function togglePhoneCard(id) {
+    const details = document.getElementById('phone-card-' + id);
+    const chevron = document.getElementById('chev-' + id);
+    if (!details) return;
+    const open = details.style.display === 'none';
+    details.style.display = open ? 'block' : 'none';
+    if (chevron) chevron.style.transform = open ? 'rotate(180deg)' : '';
+    if (open) {
+      const ta = details.querySelector('textarea');
+      if (ta) { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }
+    }
+  }
+
+  function toggleArchiveCollapse() {
+    archiveOpen = !archiveOpen;
+    document.getElementById('archive-list-wrap').style.display = archiveOpen ? '' : 'none';
+    document.getElementById('archive-chevron').style.transform = archiveOpen ? 'rotate(180deg)' : '';
+  }
+
+  function phoneRowHTML(e, idPrefix) {
+    idPrefix = idPrefix || '';
+    const badge = e.jobType
+      ? `<span class="job-badge ${e.jobType}">${jobLabels[e.jobType] || e.jobType}</span>`
+      : `<span style="color:var(--text-3); font-size:12px;">—</span>`;
+
+    const attempts = e.attempts || [false, false, false];
+    const archiveBtn = `<button onclick="archiveEntry('${e.id}')" title="Archive — Lost" style="margin-left:8px;flex-shrink:0;display:inline-flex;align-items:center;gap:4px;padding:3px 9px;height:26px;font-size:11px;font-weight:600;border-radius:6px;border:1px solid rgba(239,68,68,0.4);background:rgba(239,68,68,0.12);color:#e53e3e;cursor:pointer;white-space:nowrap;">
+       <svg fill="none" viewBox="0 0 24 24" stroke-width="2" style="width:12px;height:12px;stroke:#e53e3e;"><path stroke-linecap="round" d="M5 8h14M5 8a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2M5 8l1 12h12l1-12"/></svg>
+       Lost
+     </button>`;
+
+    const attemptsHTML = `<div class="attempt-checks" style="display:flex;align-items:center;gap:4px;">
+      ${['1st','2nd','3rd'].map((lbl, i) => `
+        <label class="attempt-check" title="${lbl} attempt">
+          <input type="checkbox" ${attempts[i] ? 'checked' : ''} onchange="toggleAttempt('${e.id}', ${i})" />
+          <div class="attempt-dot">${attempts[i] ? '✓' : ''}</div>
+          <span class="attempt-label">${lbl}</span>
+        </label>`).join('')}
+      ${archiveBtn}
+    </div>`;
+
+    const dateInput = `<input class="date-editable" type="date" value="${e.nextDate || ''}" onchange="updatePhoneDate('${e.id}', this.value)" />`;
+
+    const checkedCount = attempts.filter(Boolean).length;
+    const attemptSummary = checkedCount === 0 ? 'No attempts' : `${checkedCount}/3 attempts`;
+    const allAttempted = attempts.every(Boolean); // kept for reference only
+
+    return `<tr>
+      <td class="mobile-card-td">
+        <!-- Always-visible summary row -->
+        <div class="card-top-row" onclick="togglePhoneCard('${idPrefix}${e.id}')" style="cursor:pointer;">
+          <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;">
+            <span class="phone-number">${e.phone}</span>
+            <span style="font-size:11px;color:var(--text-3);">${attemptSummary} · Next: ${e.nextDate ? new Date(e.nextDate+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—'}</span>
+          </div>
+          ${badge}
+          <svg class="card-chevron" id="chev-${idPrefix}${e.id}" fill="none" viewBox="0 0 24 24" stroke-width="2" style="width:16px;height:16px;stroke:var(--text-3);flex-shrink:0;transition:transform 0.2s;"><path stroke-linecap="round" d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <!-- Expandable details -->
+        <div id="phone-card-${idPrefix}${e.id}" class="phone-card-details" style="display:none;">
+          <div style="height:1px;background:var(--border);margin:10px 0;"></div>
+          <div data-label="Attempts" style="margin-bottom:10px;">
+            <div style="font-size:10px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">Attempts</div>
+            ${attemptsHTML}
+          </div>
+          <div data-label="Next Contact" style="margin-bottom:10px;">
+            <div style="font-size:10px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">Next Contact</div>
+            ${dateInput}
+          </div>
+          <div data-label="Notes" style="margin-bottom:10px;">
+            <div style="font-size:10px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">Notes</div>
+            <textarea class="notes-editable" placeholder="Add notes…" onchange="updatePhoneNotes('${e.id}', this.value)" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'" style="width:100%;">${(e.notes || '').replace(/</g,'&lt;')}</textarea>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+            <span style="font-size:11px;color:var(--text-3);">Added ${fmtDate(e.added)}</span>
+            <button class="icon-btn del" onclick="deletePhoneEntry('${e.id}')" title="Delete">
+              <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" d="M19 7l-1 14H6L5 7"/><path stroke-linecap="round" d="M3 7h18M10 11v6M14 11v6M9 7V4h6v3"/></svg>
+            </button>
+          </div>
+        </div>
+      </td>
+      <!-- Desktop-only cells (hidden on mobile via CSS) -->
+      <td class="desktop-cell"><span class="phone-number">${e.phone}</span></td>
+      <td class="desktop-cell">${badge}</td>
+      <td class="desktop-cell">${attemptsHTML}</td>
+      <td class="desktop-cell">${dateInput}</td>
+      <td class="desktop-cell"><textarea class="notes-editable" placeholder="Add notes…" onchange="updatePhoneNotes('${e.id}', this.value)" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'">${(e.notes || '').replace(/</g,'&lt;')}</textarea></td>
+      <td class="desktop-cell"><span class="date-chip">${fmtDate(e.added)}</span></td>
+      <td class="desktop-cell">
+        <button class="icon-btn del" onclick="deletePhoneEntry('${e.id}')" title="Delete">
+          <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" d="M19 7l-1 14H6L5 7"/><path stroke-linecap="round" d="M3 7h18M10 11v6M14 11v6M9 7V4h6v3"/></svg>
+        </button>
+      </td>
+    </tr>`;
+  }
+
+  function renderPhoneTracker() {
+    const tbody       = document.getElementById('phone-list-body');
+    const todayBody   = document.getElementById('phone-today-body');
+    const todaySection = document.getElementById('phone-today-section');
+    const archiveSection = document.getElementById('phone-archive-section');
+    const archiveBody = document.getElementById('phone-archive-body');
+    if (!tbody) return;
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const dueToday = phoneEntries.filter(e => e.nextDate === todayStr);
+
+    // Due today
+    if (dueToday.length) {
+      todaySection.style.display = 'block';
+      todayBody.innerHTML = dueToday.map(e => phoneRowHTML(e, 'today-')).join('');
+    } else {
+      todaySection.style.display = 'none';
+    }
+
+    // All follow-ups
+    tbody.innerHTML = phoneEntries.length
+      ? phoneEntries.map(phoneRowHTML).join('')
+      : `<tr><td colspan="7" style="text-align:center; padding:48px; color:var(--text-3);">No follow-ups yet — add one above.</td></tr>`;
+
+    // Auto-resize all note textareas
+    setTimeout(() => {
+      document.querySelectorAll('.notes-editable').forEach(ta => {
+        ta.style.height = 'auto';
+        ta.style.height = ta.scrollHeight + 'px';
+      });
+    }, 0);
+
+    // Archive
+    if (phoneArchive.length) {
+      archiveSection.style.display = 'block';
+      document.getElementById('archive-count-badge').textContent = phoneArchive.length;
+      archiveBody.innerHTML = phoneArchive.map(e => {
+        const badge = e.jobType
+          ? `<span class="job-badge ${e.jobType}">${jobLabels[e.jobType] || e.jobType}</span>`
+          : `<span style="color:var(--text-3);font-size:12px;">—</span>`;
+        return `<tr style="opacity:0.75;">
+          <td class="mobile-card-td">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="flex:1;min-width:0;">
+                <div class="phone-number" style="color:var(--text-2);">${e.phone}</div>
+                <div style="font-size:11px;color:var(--text-3);margin-top:2px;">${e.notes || '—'} · ${fmtDate(e.archivedAt)}</div>
+              </div>
+              ${badge}
+              <button class="icon-btn restore" onclick="restoreEntry('${e.id}')" title="Restore">
+                <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path stroke-linecap="round" d="M3 3v5h5"/></svg>
+              </button>
+            </div>
+          </td>
+          <td class="desktop-cell"><span class="phone-number" style="color:var(--text-2);">${e.phone}</span></td>
+          <td class="desktop-cell">${badge}</td>
+          <td class="desktop-cell"><span style="color:var(--text-3);font-size:12px;">${e.notes || '—'}</span></td>
+          <td class="desktop-cell"><span class="date-chip">${fmtDate(e.archivedAt)}</span></td>
+          <td class="desktop-cell">
+            <button class="icon-btn restore" onclick="restoreEntry('${e.id}')" title="Restore to follow-ups">
+              <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path stroke-linecap="round" d="M3 3v5h5"/></svg>
+            </button>
+          </td>
+        </tr>`;
+      }).join('');
+    } else {
+      archiveSection.style.display = 'none';
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────
+  // Init
+  // ────────────────────────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', async () => {
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('auth-screen').style.display = 'flex';
+    // Check existing session
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+      document.getElementById('auth-screen').style.display = 'none';
+      await initApp();
+    }
+  });
+</script>
+
+<!-- Using Google Places REST API directly — no Maps JS SDK needed -->
+
+<!-- Mobile bottom nav -->
+<nav class="bottom-nav" id="bottom-nav">
+  <button class="bottom-nav-item active" data-page="dashboard" onclick="navigate(this,'dashboard');syncBottomNav('dashboard')">
+    <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+    <span>Home</span>
+  </button>
+  <button class="bottom-nav-item" data-page="all-leads" onclick="navigate(this,'all-leads');syncBottomNav('all-leads')">
+    <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <span>Leads</span>
+    <span class="bnav-badge" id="bnav-leads-badge" style="display:none"></span>
+  </button>
+  <button class="bottom-nav-item" data-page="add-lead" onclick="navigate(this,'add-lead');syncBottomNav('add-lead')" style="color:var(--primary)">
+    <svg fill="none" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M12 8v8M8 12h8"/></svg>
+    <span>Add</span>
+  </button>
+  <button class="bottom-nav-item" data-page="phone-tracker" onclick="navigate(this,'phone-tracker');syncBottomNav('phone-tracker')">
+    <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8"><path stroke-linecap="round" d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.52 12 19.79 19.79 0 0 1 1.49 3.38 2 2 0 0 1 3.48 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+    <span>Calls</span>
+    <span class="bnav-badge" id="bnav-phone-badge" style="display:none"></span>
+  </button>
+  <button class="bottom-nav-item" data-page="today" onclick="navigate(this,'today');syncBottomNav('today')">
+    <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path stroke-linecap="round" d="M16 2v4M8 2v4M3 10h18"/></svg>
+    <span>Today</span>
+    <span class="bnav-badge" id="bnav-today-badge" style="display:none"></span>
+  </button>
+</nav>
+
+</body>
+</html>
