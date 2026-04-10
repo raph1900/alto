@@ -1176,6 +1176,73 @@
   const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
   let currentUser = null;
   let currentProfile = null;
+
+  // ─── Workiz API ───
+  const WZ_TOKEN  = 'api_yqzp50x98v9s7qkhfz6lyqogdfkhluvc';
+  const WZ_SECRET = 'sec_5062833582677073893695064189';
+  const WZ_BASE   = `https://api.workiz.com/api/v1/${WZ_TOKEN}`;
+  const wzJobTypeMap = {
+    garage:'Garage Door', hvac:'HVAC', plumbing:'Plumbing',
+    electric:'Electrical', airduct:'Air Duct / Dryer',
+    chimney:'Chimney', sliding:'Sliding Door', other:''
+  };
+
+  async function createWorkizJob(lead) {
+    try {
+      const body = {
+        auth_secret:    WZ_SECRET,
+        FirstName:      lead.firstName,
+        LastName:       lead.lastName,
+        Phone:          (lead.phone||'').replace(/\D/g,''),
+        Email:          lead.email||'',
+        Address:        lead.address||'',
+        City:           lead.city||'',
+        State:          lead.state||'',
+        PostalCode:     lead.zip||'',
+        Country:        'US',
+        Unit:           lead.unit||'',
+        JobType:        wzJobTypeMap[lead.jobType]||'',
+        JobNotes:       lead.description||'',
+        JobDateTime:    lead.scheduledStart
+          ? new Date(lead.scheduledStart).toISOString().replace('T',' ').slice(0,19)
+          : new Date(Date.now()+86400000).toISOString().slice(0,10)+' 09:00:00',
+        JobEndDateTime: lead.scheduledEnd
+          ? new Date(lead.scheduledEnd).toISOString().replace('T',' ').slice(0,19)
+          : new Date(Date.now()+86400000).toISOString().slice(0,10)+' 11:00:00'
+      };
+      const res  = await fetch(`${WZ_BASE}/job/create/`, {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
+      });
+      const json = await res.json();
+      if (json.flag && json.data?.[0]) {
+        lead.workizId     = json.data[0].UUID;
+        lead.workizSerial = json.data[0].SerialId;
+        lead.jobId        = 'WZ-' + json.data[0].SerialId;
+        dbSaveLead(lead);
+        renderAll(); renderDashboard();
+        showToast(`✓ Synced to Workiz — Job #${json.data[0].SerialId}`, 'success');
+      } else {
+        showToast('Workiz sync error: '+(json.msg||'Unknown'), 'error');
+      }
+    } catch(err) { showToast('Workiz unreachable — saved locally only','error'); }
+  }
+
+  async function updateWorkizJob(lead) {
+    if (!lead.workizId) return;
+    try {
+      const body = {
+        auth_secret:WZ_SECRET, UUID:lead.workizId,
+        FirstName:lead.firstName, LastName:lead.lastName,
+        Phone:(lead.phone||'').replace(/\D/g,''), Email:lead.email||'',
+        Address:lead.address||'', City:lead.city||'',
+        State:lead.state||'', PostalCode:lead.zip||'',
+        JobType:wzJobTypeMap[lead.jobType]||'', JobNotes:lead.description||''
+      };
+      await fetch(`${WZ_BASE}/job/update/`, {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
+      });
+    } catch(err) { console.warn('Workiz update failed',err); }
+  }
   let archiveOpen  = true;
   let currentView = 'table';
   let todayView   = 'timeline';
@@ -1320,7 +1387,10 @@
                 </div>
               </div>
             </td>
-            <td><span class="id-chip">${lead.jobId}</span></td>
+            <td style="white-space:nowrap">
+              <span class="id-chip">${lead.jobId}</span>
+              ${lead.workizId?`<a href="https://app.workiz.com/dashboard/job/${lead.workizId}/" target="_blank" title="Open in Workiz" style="display:inline-flex;align-items:center;gap:3px;margin-left:5px;font-size:10px;font-weight:600;color:#F5A623;text-decoration:none;background:rgba(245,166,35,0.12);border:1px solid rgba(245,166,35,0.3);border-radius:4px;padding:2px 5px;">WZ↗</a>`:''}
+            </td>
             <td><span class="job-badge ${lead.jobType}">${jobLabels[lead.jobType]||lead.jobType}</span></td>
             <td>
               <div style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-2);font-size:12.5px">${lead.address}</div>
@@ -1361,6 +1431,7 @@
       <div class="lead-card-right">
         <span class="job-badge ${lead.jobType}">${jobLabels[lead.jobType]||lead.jobType}</span>
         <span class="id-chip">${lead.jobId}</span>
+        ${lead.workizId?`<a href="https://app.workiz.com/dashboard/job/${lead.workizId}/" target="_blank" style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;color:#F5A623;text-decoration:none;background:rgba(245,166,35,0.12);border:1px solid rgba(245,166,35,0.3);border-radius:4px;padding:2px 5px;">WZ↗</a>`:''}
       </div>
       <button class="icon-btn del" onclick="deleteLead('${lead.id}',event)" title="Delete">
         <svg fill="none" viewBox="0 0 24 24" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path stroke-linecap="round" d="M19 6l-1 14H6L5 6M10 11v6M14 11v6"/><path stroke-linecap="round" d="M9 6V4h6v2"/></svg>
@@ -1571,12 +1642,16 @@
         return d && t ? new Date(`${d}T${t}:00`).toISOString() : null;
       })()
     };
+    lead.workizId     = null;
+    lead.workizSerial = null;
     leads.unshift(lead);
     saveLeads();
     dbSaveLead(lead);
     resetForm();
     updateBadges();
-    showToast(`Lead "${lead.firstName} ${lead.lastName}" added!`, 'success');
+    renderAll(); renderDashboard();
+    showToast(`Lead "${lead.firstName} ${lead.lastName}" added — syncing to Workiz…`, 'success');
+    createWorkizJob(lead);
   }
 
   function toggleCsel(id) {
@@ -1850,15 +1925,17 @@
       city: l.city, state: l.state, zip: l.zip, country: l.country,
       job_name: l.jobName, job_type: l.jobType, job_source: l.jobSource,
       description: l.description, status: l.status, date: l.date,
-      scheduled_start: l.scheduledStart, scheduled_end: l.scheduledEnd };
+      scheduled_start: l.scheduledStart, scheduled_end: l.scheduledEnd,
+      workiz_id: l.workizId||null, workiz_serial: l.workizSerial||null };
   }
   function rowToLead(r) {
     return { id: r.id, jobId: r.job_id, firstName: r.first_name, lastName: r.last_name,
-      phone: r.phone || '', email: r.email || '', address: r.address || '', unit: r.unit || '',
-      city: r.city || '', state: r.state || '', zip: r.zip || '', country: r.country || 'United States',
-      jobName: r.job_name || '', jobType: r.job_type || '', jobSource: r.job_source || '',
-      description: r.description || '', status: r.status || 'new', date: r.date,
-      scheduledStart: r.scheduled_start, scheduledEnd: r.scheduled_end };
+      phone: r.phone||'', email: r.email||'', address: r.address||'', unit: r.unit||'',
+      city: r.city||'', state: r.state||'', zip: r.zip||'', country: r.country||'United States',
+      jobName: r.job_name||'', jobType: r.job_type||'', jobSource: r.job_source||'',
+      description: r.description||'', status: r.status||'new', date: r.date,
+      scheduledStart: r.scheduled_start, scheduledEnd: r.scheduled_end,
+      workizId: r.workiz_id||null, workizSerial: r.workiz_serial||null };
   }
   function phoneEntryToRow(e) {
     return { id: e.id, phone: e.phone, job_type: e.jobType, next_date: e.nextDate,
